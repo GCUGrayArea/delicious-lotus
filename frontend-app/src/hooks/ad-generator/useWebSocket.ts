@@ -107,6 +107,8 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
   const wsManager = useRef<WebSocketManager | null>(null);
   const pollingTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const isMounted = useRef(true);
+  const enablePollingRef = useRef<() => void>(() => {});
+  const disablePollingRef = useRef<() => void>(() => {});
 
   // Initialize WebSocket manager
   useEffect(() => {
@@ -180,12 +182,12 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
   useEffect(() => {
     if (enablePollingFallback && connectionStatus === 'error') {
       console.log('[useWebSocket] Connection failed, enabling polling fallback');
-      enablePolling();
+      enablePollingRef.current();
     } else if (connectionStatus === 'connected' && isPolling) {
       console.log('[useWebSocket] Connection restored, disabling polling');
-      disablePolling();
+      disablePollingRef.current();
     }
-  }, [connectionStatus, enablePollingFallback]);
+  }, [connectionStatus, enablePollingFallback, isPolling]);
 
   /**
    * Connect to WebSocket
@@ -289,6 +291,12 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
 
     setIsPolling(false);
   }, [isPolling]);
+
+  // Update refs after callbacks are defined
+  useEffect(() => {
+    enablePollingRef.current = enablePolling;
+    disablePollingRef.current = disablePolling;
+  }, [enablePolling, disablePolling]);
 
   return {
     // Connection state

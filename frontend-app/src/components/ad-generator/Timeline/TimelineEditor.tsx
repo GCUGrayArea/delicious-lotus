@@ -68,13 +68,6 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
   const [isCreatingComposition, setIsCreatingComposition] = useState(false);
   const [compositionError, setCompositionError] = useState<string | null>(null);
 
-  // Load clips from API if not provided
-  useEffect(() => {
-    if (!initialClips && generationId) {
-      loadClips();
-    }
-  }, [generationId, initialClips]);
-
   const loadClips = async () => {
     try {
       setIsLoadingClips(true);
@@ -94,6 +87,14 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
       setIsLoadingClips(false);
     }
   };
+
+  // Load clips from API if not provided
+  useEffect(() => {
+    if (!initialClips && generationId) {
+      loadClips();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [generationId, initialClips]);
 
   // Handle composition creation
   const handleCreateComposition = async () => {

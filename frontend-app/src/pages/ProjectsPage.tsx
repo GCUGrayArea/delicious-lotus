@@ -14,7 +14,7 @@ import { Input } from '../components/ui/input';
 export default function ProjectsPage() {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [_isLoading, _setIsLoading] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<{ id: string; name: string } | null>(null);
@@ -23,7 +23,7 @@ export default function ProjectsPage() {
   const getProjects = useProjectStore((state) => state.getProjects);
   const addProject = useProjectStore((state) => state.addProject);
   const removeProject = useProjectStore((state) => state.removeProject);
-  const getCurrentProject = useProjectStore((state) => state.getCurrentProject);
+  const _getCurrentProject = useProjectStore((state) => state.getCurrentProject);
   const currentProjectId = useProjectStore((state) => state.currentProjectId);
   const projects = useMemo(() => getProjects(), [getProjects]);
 

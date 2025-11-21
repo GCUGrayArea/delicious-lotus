@@ -252,8 +252,8 @@ export const createTimelineStore = () => {
         equality: (a, b) => a === b,
         // Exclude playhead and zoom from undo/redo history
         partialize: (state) => {
-          const { playhead, zoom, selectedClipIds, ...rest } = state
-          return rest as any
+          const { playhead: _playhead, zoom: _zoom, selectedClipIds: _selectedClipIds, ...rest } = state
+          return rest as Omit<typeof state, 'playhead' | 'zoom' | 'selectedClipIds'>
         },
       }
     )

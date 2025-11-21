@@ -25,7 +25,6 @@ import type {
   ExportFormat,
   FrameRate,
   ExportSettings,
-  QualityPreset,
 } from '@/types/export'
 import { QUALITY_PRESETS, RESOLUTION_DIMENSIONS } from '@/types/export'
 import { validateExportSettings, estimateFileSize } from '@/lib/exportValidation'
@@ -81,7 +80,7 @@ export function ExportModal({
   // Get quality preset name
   const getQualityLabel = (crfValue: number): string => {
     const preset = Object.entries(QUALITY_PRESETS).find(
-      ([_, value]) => value === crfValue
+      ([, value]) => value === crfValue
     )
     return preset ? preset[0] : 'Custom'
   }

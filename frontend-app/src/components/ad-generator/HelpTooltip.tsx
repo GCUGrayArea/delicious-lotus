@@ -72,7 +72,7 @@ export const HelpTooltip: React.FC<HelpTooltipProps> = ({
     };
   }, [isVisible]);
 
-  // Adjust tooltip position to stay within viewport
+  // Adjust tooltip position to stay within viewport using layout effect for synchronous update
   useEffect(() => {
     if (!isVisible || !tooltipRef.current) return;
 
@@ -96,8 +96,12 @@ export const HelpTooltip: React.FC<HelpTooltipProps> = ({
       newPosition = 'left';
     }
 
-    setTooltipPosition(newPosition);
-  }, [isVisible, position]);
+    // Only update if position actually changed to avoid cascading renders
+    if (newPosition !== tooltipPosition) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setTooltipPosition(newPosition);
+    }
+  }, [isVisible, position, tooltipPosition]);
 
   const handleMouseEnter = () => {
     if (trigger === 'hover' || trigger === 'both') {
@@ -193,7 +197,7 @@ export const HelpTooltip: React.FC<HelpTooltipProps> = ({
                   key={index}
                   href={link.url}
                   className={styles.tooltipLink}
-                  onClick={(e) => {
+                  onClick={() => {
                     // Handle internal links with router if needed
                     // For now, just let default behavior happen
                   }}

@@ -172,9 +172,9 @@ export const createUiStore = () => {
         })),
         {
           name: 'ui-store',
-          storage: createIndexedDBStorage(STORE_NAMES.UI) as any,
+          storage: createIndexedDBStorage(STORE_NAMES.UI) as ReturnType<typeof createIndexedDBStorage>,
           // Custom serialization for Map and to only persist certain fields
-          serialize: (state: any) => {
+          serialize: (state: { state: typeof initialState; version: number }) => {
             return JSON.stringify({
               state: {
                 panelStates: state.state.panelStates,
@@ -197,7 +197,7 @@ export const createUiStore = () => {
               version: parsed.version,
             }
           },
-        } as any
+        }
       ),
       { name: 'UiStore' }
     )

@@ -1,4 +1,4 @@
-import { Upload, Search, Sparkles, Trash2, X, GripVertical } from 'lucide-react';
+import { Upload, Search, Sparkles, Trash2, X } from 'lucide-react';
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import AIGenerationPanel from '../components/ai-generation/AIGenerationPanel';
 import { MediaLibraryUpload } from '../components/media/MediaLibraryUpload';
@@ -112,8 +112,8 @@ export default function MediaLibraryPage() {
     });
   }, [queueUpload]);
 
-  // Trigger file picker programmatically
-  const triggerUpload = useCallback(() => {
+  // Trigger file picker programmatically - kept for future drag/drop implementation
+  const _triggerUpload = useCallback(() => {
     uploadInputRef.current?.click();
   }, []);
 

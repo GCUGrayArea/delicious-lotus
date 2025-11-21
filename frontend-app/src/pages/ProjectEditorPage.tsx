@@ -19,7 +19,7 @@ import { toast } from '../lib/toast';
  * Project editor page with basic editor shell and route param handling
  */
 export default function ProjectEditorPage() {
-  const { projectId } = useParams();
+  const { projectId: _projectId } = useParams();
   const timelineStore = useTimelineStore();
   const mediaStore = useMediaStore();
   const editorStore = useEditorStore();

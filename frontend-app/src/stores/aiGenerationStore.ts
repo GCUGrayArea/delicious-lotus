@@ -5,7 +5,6 @@ import type {
   AIGenerationStore,
   GenerationRequest,
   GenerationHistory,
-  GenerationStatus,
 } from '../types/stores'
 
 // Initial state

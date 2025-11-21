@@ -18,7 +18,7 @@ interface BrandSettingsProps {
   onSecondaryColorChange: (color: string) => void;
   onIncludeCtaChange: (include: boolean) => void;
   onCtaTextChange: (text: string) => void;
-  onFieldBlur: (field: string, value: any) => void;
+  onFieldBlur: (field: string, value: string) => void;
 }
 
 export const BrandSettings: React.FC<BrandSettingsProps> = ({

@@ -91,8 +91,8 @@ export function useUpload(): UseUploadReturn {
     }
   }, [mediaStoreContext])
 
-  // Get upload speeds
-  const uploadSpeeds = uploadManagerRef.current?.getUploadSpeeds() ?? new Map()
+  // Get upload speeds - use a getter to avoid accessing ref during render
+  const getUploadSpeeds = () => uploadManagerRef.current?.getUploadSpeeds() ?? new Map()
 
   return {
     uploadFiles: async (files: File[]) => {
@@ -121,7 +121,7 @@ export function useUpload(): UseUploadReturn {
     },
 
     uploads,
-    uploadSpeeds,
+    get uploadSpeeds() { return getUploadSpeeds() },
 
     importMediaFromUrl: async (url: string, name: string, type: 'image' | 'video' | 'audio') => {
       const state = mediaStoreContext!.getState()

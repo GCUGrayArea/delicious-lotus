@@ -3,14 +3,12 @@ import type {
   AspectRatio,
   Resolution,
   ExportFormat,
-  FrameRate,
   ExportSettings,
   ExportDimensions,
 } from '@/types/export'
 import {
   RESOLUTION_DIMENSIONS,
   FORMAT_CODEC_MAP,
-  QUALITY_PRESETS,
 } from '@/types/export'
 
 // Zod schema for export settings validation

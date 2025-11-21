@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useId } from 'react';
 import styles from './ColorPicker.module.css';
 
 export interface ColorPickerProps {
@@ -38,7 +38,8 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
   disabled = false,
 }) => {
   const [hexInput, setHexInput] = useState(value);
-  const pickerId = id || `color-picker-${Math.random().toString(36).substr(2, 9)}`;
+  const generatedId = useId();
+  const pickerId = id || generatedId;
   const hasError = !!error;
 
   const handleColorChange = (color: string) => {

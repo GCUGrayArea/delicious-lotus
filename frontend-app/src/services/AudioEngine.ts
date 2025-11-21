@@ -197,7 +197,7 @@ export class AudioEngine {
 
     try {
       sourceState.source.stop()
-    } catch (error) {
+    } catch {
       // Ignore errors if source already stopped
     }
 
@@ -212,7 +212,7 @@ export class AudioEngine {
       if (sourceState.source) {
         try {
           sourceState.source.stop()
-        } catch (error) {
+        } catch {
           // Ignore errors
         }
       }

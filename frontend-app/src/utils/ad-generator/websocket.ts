@@ -80,7 +80,15 @@ export class WebSocketManager {
       // Create Socket.io connection
       // Always use the Socket.io path; pass generation_id via query so the
       // backend can validate and subscribe the connection.
-      const options: any = {
+      const options: {
+        path: string;
+        transports: string[];
+        reconnection: boolean;
+        timeout: number | undefined;
+        withCredentials: boolean;
+        extraHeaders: Record<string, string>;
+        query?: Record<string, string>;
+      } = {
         path: '/socket.io',
         transports: ['websocket', 'polling'],
         reconnection: false, // We handle reconnection manually
@@ -131,7 +139,7 @@ export class WebSocketManager {
    * @param eventType - Event type to listen for
    * @param handler - Event handler function
    */
-  subscribe<T = any>(eventType: string, handler: EventHandler<T>): void {
+  subscribe<T = unknown>(eventType: string, handler: EventHandler<T>): void {
     if (!this.eventHandlers.has(eventType)) {
       this.eventHandlers.set(eventType, new Set());
     }
@@ -175,7 +183,7 @@ export class WebSocketManager {
    * @param event - Event name
    * @param data - Event data
    */
-  send(event: string, data: any): void {
+  send(event: string, data: unknown): void {
     if (this.socket?.connected) {
       this.socket.emit(event, data);
     } else {

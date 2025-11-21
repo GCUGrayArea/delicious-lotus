@@ -40,7 +40,6 @@ export const ClipRenderer = memo(function ClipRenderer({
   isSelected,
   fps,
   zoom,
-  trackType,
   isLocked,
   trackId,
   allClips,
@@ -48,7 +47,7 @@ export const ClipRenderer = memo(function ClipRenderer({
   onSelect,
   onMove,
   onTrim,
-}: ClipRendererProps) {
+}: Omit<ClipRendererProps, 'trackType'>) {
   const clipRef = useRef<HTMLDivElement>(null)
   const mediaAssets = useMediaStore((state) => state.assets)
   const asset = mediaAssets.get(clip.assetId)

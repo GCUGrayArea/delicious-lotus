@@ -80,13 +80,14 @@ export function VideoControls({
 
   // Show controls when paused
   useEffect(() => {
-    if (!isPlaying) {
+    if (!isPlaying && !showControls) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setShowControls(true);
-      if (hideControlsTimer.current) {
-        clearTimeout(hideControlsTimer.current);
-      }
     }
-  }, [isPlaying]);
+    if (!isPlaying && hideControlsTimer.current) {
+      clearTimeout(hideControlsTimer.current);
+    }
+  }, [isPlaying, showControls]);
 
   return (
     <div

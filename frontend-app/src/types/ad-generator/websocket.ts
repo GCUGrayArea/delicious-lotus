@@ -126,7 +126,7 @@ export type WebSocketEvent =
 /**
  * Generic event handler type
  */
-export type EventHandler<T = any> = (data: T) => void;
+export type EventHandler<T = unknown> = (data: T) => void;
 
 // ============================================================================
 // Configuration

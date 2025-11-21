@@ -45,7 +45,7 @@ export function useKeyboardShortcuts({ shortcuts, enabled = true }: UseKeyboardS
         // Check if shortcut is enabled
         const isEnabled = shortcut.enabled !== false
 
-        return keyMatches && ctrlMatches && shiftMatches && altMatches && isEnabled
+        return keyMatches && ctrlMatches && shiftMatches && altMatches && metaMatches && isEnabled
       })
 
       if (matchedShortcut) {

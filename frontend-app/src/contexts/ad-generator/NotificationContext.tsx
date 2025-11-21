@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useState, ReactNode } from 'react';
 import { ToastContainer } from '@/components/ad-generator/ui/Toast';
-import type { ToastProps, ToastType, ToastContainerProps } from '@/components/ad-generator/ui/Toast';
+import type { ToastProps, ToastContainerProps } from '@/components/ad-generator/ui/Toast';
 
 /**
  * Notification Context Value

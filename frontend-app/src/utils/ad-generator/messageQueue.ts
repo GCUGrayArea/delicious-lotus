@@ -14,7 +14,7 @@ export interface QueuedMessage {
   /** Event type */
   event: string;
   /** Event data */
-  data: any;
+  data: unknown;
   /** Number of retry attempts */
   retries: number;
 }
@@ -63,7 +63,7 @@ export class MessageQueue {
    * @param data - Event data
    * @returns Message ID
    */
-  enqueue(event: string, data: any): string {
+  enqueue(event: string, data: unknown): string {
     const id = this.generateId();
     const message: QueuedMessage = {
       id,
@@ -246,7 +246,7 @@ export class MessageQueue {
       }
 
       const parsed = JSON.parse(stored);
-      this.queue = parsed.map((msg: any) => ({
+      this.queue = parsed.map((msg: { id: string; timestamp: string; event: string; data: unknown; retries: number }) => ({
         ...msg,
         timestamp: new Date(msg.timestamp),
       }));

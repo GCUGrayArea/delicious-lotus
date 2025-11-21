@@ -2,7 +2,7 @@ import { createStore } from 'zustand/vanilla'
 import { immer } from 'zustand/middleware/immer'
 import { devtools } from 'zustand/middleware'
 import type { WebSocketStore, JobState } from '../types/stores'
-import type { ConnectionStatus, ConnectionMetrics, JobUpdateMessage, JobType } from '../types/websocket'
+import type { ConnectionStatus, ConnectionMetrics, JobType } from '../types/websocket'
 import { getWebSocketService } from '../services/WebSocketService'
 
 // Initial connection metrics
@@ -35,15 +35,6 @@ const loadPersistedJobs = (): string[] => {
   }
 }
 
-const removeFromPersistedJobs = (jobId: string) => {
-  try {
-    const stored = loadPersistedJobs()
-    const updated = stored.filter(id => id !== jobId)
-    persistActiveJobs(updated)
-  } catch (error) {
-    console.error('Failed to remove job from localStorage:', error)
-  }
-}
 
 // Initial state - restore persisted jobs
 const initialState = {
@@ -58,7 +49,7 @@ const initialState = {
 export const createWebSocketStore = () => {
   return createStore<WebSocketStore>()(
     devtools(
-      immer((set, get) => ({
+      immer((set) => ({
         ...initialState,
 
         // Connection management

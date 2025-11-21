@@ -416,7 +416,7 @@ export const createProjectStore = () => {
         })),
         {
           name: 'project-store',
-          storage: createIndexedDBStorage(STORE_NAMES.PROJECT) as any,
+          storage: createIndexedDBStorage(STORE_NAMES.PROJECT) as ReturnType<typeof createIndexedDBStorage>,
           // Serialize/deserialize dates properly
           serialize: (state) => {
             return JSON.stringify({
@@ -468,7 +468,7 @@ export const createProjectStore = () => {
               version: parsed.version,
             }
           },
-        } as any
+        }
       ),
       { name: 'ProjectStore' }
     )

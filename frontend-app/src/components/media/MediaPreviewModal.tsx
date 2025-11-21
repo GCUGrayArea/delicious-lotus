@@ -237,6 +237,13 @@ export function MediaPreviewModal({ asset, isOpen, onClose, onUpdate }: MediaPre
                   <DropdownMenuLabel>Asset Information</DropdownMenuLabel>
                   <DropdownMenuSeparator />
 
+                  <div className="px-2 py-1.5 text-sm">
+                    <span className="text-zinc-400 block text-xs mb-0.5">Asset ID</span>
+                    <code className="text-xs bg-zinc-800 px-1 py-0.5 rounded select-all">
+                      {asset.id}
+                    </code>
+                  </div>
+
                   {asset.width && asset.height && (
                     <div className="px-2 py-1.5 text-sm">
                       <span className="text-zinc-400 block text-xs mb-0.5">Dimensions</span>
@@ -332,7 +339,38 @@ export function MediaPreviewModal({ asset, isOpen, onClose, onUpdate }: MediaPre
             </video>
           )}
 
-          {!isImage && !isVideo && (
+          {asset.type === 'audio' && (
+            <div className="flex flex-col items-center justify-center w-full h-full min-w-[300px] min-h-[200px]">
+              <div className="mb-8 p-8 rounded-full bg-zinc-900 border border-zinc-800">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="64"
+                  height="64"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="text-zinc-400"
+                >
+                  <path d="M9 18V5l12-2v13" />
+                  <circle cx="6" cy="18" r="3" />
+                  <circle cx="18" cy="16" r="3" />
+                </svg>
+              </div>
+              <audio
+                controls
+                autoPlay
+                src={cleanUrl}
+                className="w-full max-w-md"
+              >
+                Your browser does not support the audio element.
+              </audio>
+            </div>
+          )}
+
+          {!isImage && !isVideo && asset.type !== 'audio' && (
             <div className="text-center text-zinc-400 p-8">
               <p className="mb-2">Preview not available for this media type</p>
               <a

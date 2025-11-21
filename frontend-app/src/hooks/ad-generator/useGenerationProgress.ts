@@ -102,11 +102,13 @@ export function useGenerationProgress(
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [estimatedTimeRemaining, setEstimatedTimeRemaining] = useState<number | null>(null);
+  const [isPollingActive, setIsPollingActive] = useState(false);
 
   // Refs
   const pollingTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const isMounted = useRef(true);
   const previousStatus = useRef<GenerationStatus>('queued');
+  const stopPollingRef = useRef<() => void>(() => {});
 
   // WebSocket connection
   const {
@@ -153,13 +155,13 @@ export function useGenerationProgress(
 
       // Handle completion
       if (response.status === 'completed') {
-        stopPolling();
+        stopPollingRef.current();
         // Note: onComplete will be called via WebSocket event or we can call it here
       }
 
       // Handle failure
       if (response.status === 'failed' || response.status === 'cancelled') {
-        stopPolling();
+        stopPollingRef.current();
         if (response.status === 'failed') {
           setError('Generation failed. Please try again.');
         }
@@ -182,6 +184,7 @@ export function useGenerationProgress(
     if (pollingTimer.current) return;
 
     console.log('[useGenerationProgress] Starting polling fallback');
+    setIsPollingActive(true);
     pollingTimer.current = setInterval(() => {
       fetchStatus();
     }, pollingInterval);
@@ -198,8 +201,14 @@ export function useGenerationProgress(
       console.log('[useGenerationProgress] Stopping polling');
       clearInterval(pollingTimer.current);
       pollingTimer.current = null;
+      setIsPollingActive(false);
     }
   }, []);
+
+  // Update ref after stopPolling is defined - use useEffect to avoid setting ref during render
+  useEffect(() => {
+    stopPollingRef.current = stopPolling;
+  }, [stopPolling]);
 
   /**
    * Handle progress event from WebSocket
@@ -412,7 +421,7 @@ export function useGenerationProgress(
 
     // Real-time connection state
     isConnected,
-    isPolling: wsIsPolling || !!pollingTimer.current,
+    isPolling: wsIsPolling || isPollingActive,
 
     // Progress metadata
     currentStep: progress?.current_step || 'Initializing...',

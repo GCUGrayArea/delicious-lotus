@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Navigation } from './Navigation';
 import styles from './MobileMenu.module.css';
@@ -12,11 +12,18 @@ import styles from './MobileMenu.module.css';
 export function MobileMenu() {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
+  const prevPathnameRef = useRef(location.pathname);
 
   // Close menu on route change
   useEffect(() => {
-    setIsOpen(false);
-  }, [location.pathname]);
+    if (prevPathnameRef.current !== location.pathname) {
+      prevPathnameRef.current = location.pathname;
+      if (isOpen) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setIsOpen(false);
+      }
+    }
+  }, [location.pathname, isOpen]);
 
   // Prevent body scroll when menu is open
   useEffect(() => {

@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useRef, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useRef, useCallback, type ReactNode } from 'react'
 import { WebSocketService } from '../services/WebSocketService'
 import { useWebSocketStore } from './StoreContext'
 import type { WebSocketMessage, JobUpdateMessage } from '../types/websocket'
@@ -30,6 +30,19 @@ export function WebSocketProvider({
 }: WebSocketProviderProps) {
   const serviceRef = useRef<WebSocketService | null>(null)
   const webSocketStore = useWebSocketStore()
+
+  // Handle incoming WebSocket messages - defined before useEffect to avoid hoisting issues
+  const handleMessage = useCallback((message: WebSocketMessage) => {
+    // Route job update messages to the store
+    // Backend sends messages with "type" field, not "event"
+    const eventType = message.event || ('type' in message ? message.type : '') || ''
+    if (eventType.startsWith('job.') || ('type' in message && message.type === 'status_update') || ('job_id' in message && message.job_id)) {
+      webSocketStore.handleJobUpdate(message as JobUpdateMessage)
+    }
+
+    // Add additional message routing here as needed
+    // Example: if (message.event === 'notification') { ... }
+  }, [webSocketStore])
 
   useEffect(() => {
     // Determine WebSocket URL
@@ -89,20 +102,7 @@ export function WebSocketProvider({
         WebSocketService.resetInstance()
       }
     }
-  }, [url, authToken, autoConnect])
-
-  // Handle incoming WebSocket messages
-  const handleMessage = (message: WebSocketMessage) => {
-    // Route job update messages to the store
-    // Backend sends messages with "type" field, not "event"
-    const eventType = message.event || ('type' in message ? message.type : '') || ''
-    if (eventType.startsWith('job.') || ('type' in message && message.type === 'status_update') || ('job_id' in message && message.job_id)) {
-      webSocketStore.handleJobUpdate(message as JobUpdateMessage)
-    }
-
-    // Add additional message routing here as needed
-    // Example: if (message.event === 'notification') { ... }
-  }
+  }, [url, authToken, autoConnect, handleMessage])
 
   return (
     <WebSocketContext.Provider value={{ service: serviceRef.current }}>

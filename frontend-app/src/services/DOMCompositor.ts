@@ -170,7 +170,7 @@ export class DOMCompositor {
   /**
    * Render an image layer
    */
-  private renderImageLayer(element: HTMLDivElement, asset: MediaAsset, clip: Clip): void {
+  private renderImageLayer(element: HTMLDivElement, asset: MediaAsset, _clip: Clip): void {
     // Check if we need to update the image
     const existingImg = element.querySelector('img')
     if (existingImg && existingImg.src === asset.url) {

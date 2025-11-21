@@ -18,7 +18,6 @@ import type {
   ConnectionHandler,
   ErrorHandler,
   QueuedMessage,
-  JobUpdateMessage,
   PingMessage,
   PongMessage,
 } from '../types/websocket'
@@ -348,7 +347,7 @@ export class WebSocketService {
     }
   }
 
-  private handlePongMessage(message: PongMessage): void {
+  private handlePongMessage(_message: PongMessage): void {
     if (this.pongTimer) {
       clearTimeout(this.pongTimer)
       this.pongTimer = null

@@ -115,6 +115,13 @@ function GenerationCard({ generation, onCancel, onRemove }: GenerationCardProps)
             )}
           </div>
 
+          {/* Job ID */}
+          {generation.jobId && (
+            <div className="text-xs text-zinc-600 font-mono mb-2 select-all">
+              Job ID: {generation.jobId}
+            </div>
+          )}
+
           {/* Progress Bar (if generating) */}
           {generation.status === 'generating' && generation.progress !== undefined && (
             <div className="mb-3">

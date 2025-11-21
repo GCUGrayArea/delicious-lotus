@@ -60,8 +60,8 @@ export interface ValidationRule {
   minLength?: number;
   maxLength?: number;
   pattern?: RegExp;
-  enum?: any[];
-  custom?: (value: any, formData: AdCreativeFormData) => boolean;
+  enum?: (string | number)[];
+  custom?: (value: unknown, formData: AdCreativeFormData) => boolean;
   message: string;
 }
 

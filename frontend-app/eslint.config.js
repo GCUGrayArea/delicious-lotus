@@ -19,5 +19,17 @@ export default defineConfig([
       ecmaVersion: 2020,
       globals: globals.browser,
     },
+    rules: {
+      // Allow exporting both components and utilities from the same file
+      'react-refresh/only-export-components': 'off',
+      // Downgrade exhaustive deps to warning
+      'react-hooks/exhaustive-deps': 'warn',
+      // Allow unused variables with underscore prefix
+      '@typescript-eslint/no-unused-vars': ['error', {
+        argsIgnorePattern: '^_',
+        varsIgnorePattern: '^_',
+        caughtErrorsIgnorePattern: '^_',
+      }],
+    },
   },
 ])

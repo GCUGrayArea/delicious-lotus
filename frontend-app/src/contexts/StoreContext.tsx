@@ -1,4 +1,4 @@
-import { createContext, useContext, useRef, type ReactNode } from 'react'
+import { createContext, useContext, useState, type ReactNode } from 'react'
 import { useStore } from 'zustand'
 import {
   createTimelineStore,
@@ -52,50 +52,25 @@ interface StoreProviderProps {
 
 // Combined store provider component
 export function StoreProvider({ children }: StoreProviderProps) {
-  // Create store instances only once using refs
-  const timelineStore = useRef<TimelineStoreInstance | undefined>(undefined)
-  const mediaStore = useRef<MediaStoreInstance | undefined>(undefined)
-  const projectStore = useRef<ProjectStoreInstance | undefined>(undefined)
-  const editorStore = useRef<EditorStoreInstance | undefined>(undefined)
-  const webSocketStore = useRef<WebSocketStoreInstance | undefined>(undefined)
-  const aiGenerationStore = useRef<AIGenerationStoreInstance | undefined>(undefined)
-  const authStore = useRef<AuthStoreInstance | undefined>(undefined)
-  const uiStore = useRef<UiStoreInstance | undefined>(undefined)
-
-  if (!timelineStore.current) {
-    timelineStore.current = createTimelineStore() as any
-  }
-  if (!mediaStore.current) {
-    mediaStore.current = createMediaStore() as any
-  }
-  if (!projectStore.current) {
-    projectStore.current = createProjectStore() as any
-  }
-  if (!editorStore.current) {
-    editorStore.current = createEditorStore() as any
-  }
-  if (!webSocketStore.current) {
-    webSocketStore.current = createWebSocketStore() as any
-  }
-  if (!aiGenerationStore.current) {
-    aiGenerationStore.current = createAIGenerationStore() as any
-  }
-  if (!authStore.current) {
-    authStore.current = createAuthStore() as any
-  }
-  if (!uiStore.current) {
-    uiStore.current = createUiStore() as any
-  }
+  // Create store instances only once using useState with lazy initializer
+  const [timelineStore] = useState(() => createTimelineStore() as unknown as TimelineStoreInstance)
+  const [mediaStore] = useState(() => createMediaStore() as unknown as MediaStoreInstance)
+  const [projectStore] = useState(() => createProjectStore() as unknown as ProjectStoreInstance)
+  const [editorStore] = useState(() => createEditorStore() as unknown as EditorStoreInstance)
+  const [webSocketStore] = useState(() => createWebSocketStore() as unknown as WebSocketStoreInstance)
+  const [aiGenerationStore] = useState(() => createAIGenerationStore() as unknown as AIGenerationStoreInstance)
+  const [authStore] = useState(() => createAuthStore() as unknown as AuthStoreInstance)
+  const [uiStore] = useState(() => createUiStore() as unknown as UiStoreInstance)
 
   return (
-    <AuthStoreContext.Provider value={authStore.current}>
-      <UiStoreContext.Provider value={uiStore.current}>
-        <TimelineStoreContext.Provider value={timelineStore.current}>
-          <MediaStoreContext.Provider value={mediaStore.current}>
-            <ProjectStoreContext.Provider value={projectStore.current}>
-              <EditorStoreContext.Provider value={editorStore.current}>
-                <WebSocketStoreContext.Provider value={webSocketStore.current}>
-                  <AIGenerationStoreContext.Provider value={aiGenerationStore.current}>
+    <AuthStoreContext.Provider value={authStore}>
+      <UiStoreContext.Provider value={uiStore}>
+        <TimelineStoreContext.Provider value={timelineStore}>
+          <MediaStoreContext.Provider value={mediaStore}>
+            <ProjectStoreContext.Provider value={projectStore}>
+              <EditorStoreContext.Provider value={editorStore}>
+                <WebSocketStoreContext.Provider value={webSocketStore}>
+                  <AIGenerationStoreContext.Provider value={aiGenerationStore}>
                     {children}
                   </AIGenerationStoreContext.Provider>
                 </WebSocketStoreContext.Provider>

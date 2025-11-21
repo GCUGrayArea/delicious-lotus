@@ -31,7 +31,7 @@ export class ClipResolver {
     this.timelineStore = timelineStore
 
     // Subscribe to timeline changes to invalidate cache
-    this.timelineStore.subscribe((state) => {
+    this.timelineStore.subscribe(() => {
       this.invalidateCache()
     })
   }

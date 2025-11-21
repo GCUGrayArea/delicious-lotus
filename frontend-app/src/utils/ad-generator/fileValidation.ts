@@ -100,7 +100,7 @@ export async function validateImageDimensions(
     }
 
     return { valid: true };
-  } catch (error) {
+  } catch {
     return {
       valid: false,
       error: 'Failed to read image dimensions',
@@ -153,7 +153,7 @@ export async function validateAudioDuration(
     }
 
     return { valid: true };
-  } catch (error) {
+  } catch {
     return {
       valid: false,
       error: 'Failed to read audio duration',

@@ -76,8 +76,8 @@ export const VALIDATION_RULES: Record<number, Record<string, ValidationRule>> = 
 /**
  * Get nested value from object using dot notation
  */
-function getNestedValue(obj: any, path: string): any {
-  return path.split('.').reduce((current, key) => current?.[key], obj);
+function getNestedValue(obj: Record<string, unknown>, path: string): unknown {
+  return path.split('.').reduce((current, key) => (current as Record<string, unknown>)?.[key], obj as unknown);
 }
 
 /**
@@ -85,7 +85,7 @@ function getNestedValue(obj: any, path: string): any {
  */
 export function validateField(
   _fieldName: string,
-  value: any,
+  value: unknown,
   rule: ValidationRule,
   formData?: AdCreativeFormData
 ): string | null {

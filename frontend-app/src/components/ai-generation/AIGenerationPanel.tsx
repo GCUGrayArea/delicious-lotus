@@ -13,6 +13,7 @@ export default function AIGenerationPanel() {
 
   // Get state and actions from stores - get the Map directly without transformation
   const activeGenerationsMap = useAIGenerationStore((state) => state.activeGenerations)
+  const completingGenerationsMap = useAIGenerationStore((state) => state.completingGenerations)
   const generationHistory = useAIGenerationStore((state) => state.generationHistory)
   const maxConcurrent = useAIGenerationStore((state) => state.maxConcurrentGenerations)
 
@@ -32,11 +33,14 @@ export default function AIGenerationPanel() {
 
   // Memoize the sorted array to prevent infinite loops
   const activeGenerations = useMemo(
-    () =>
-      Array.from(activeGenerationsMap.values()).sort(
+    () => {
+      const active = Array.from(activeGenerationsMap.values())
+      const completing = Array.from(completingGenerationsMap.values())
+      return [...active, ...completing].sort(
         (a, b) => b.createdAt.getTime() - a.createdAt.getTime()
-      ),
-    [activeGenerationsMap]
+      )
+    },
+    [activeGenerationsMap, completingGenerationsMap]
   )
 
   // Check if we can queue more generations
@@ -52,77 +56,156 @@ export default function AIGenerationPanel() {
       type: GenerationType
       qualityTier: QualityTier
       aspectRatio: '16:9' | '9:16' | '1:1' | '4:3'
+      modelId?: string
+      duration?: number
+      resolution?: string
+      imageUrl?: string
+      lastFrameUrl?: string
+      cameraFixed?: boolean
+      lyrics?: string
+      referenceAudioUrl?: string
+      negativePrompt?: string
     }) => {
       // Disable button while API call is in progress
       setIsPending(true)
 
-      try {
-        // Queue the generation in the store
-        const generationId = queueGeneration({
-          type: params.type,
-          prompt: params.prompt,
-          qualityTier: params.qualityTier,
-          aspectRatio: params.aspectRatio,
-        })
+      // Queue the generation in the store immediately
+      const generationId = queueGeneration({
+        type: params.type,
+        prompt: params.prompt,
+        qualityTier: params.qualityTier,
+        aspectRatio: params.aspectRatio,
+      })
 
-        // Call the appropriate API based on type
+      try {
         let response
+
         if (params.type === 'image') {
           response = await generateImage({
             prompt: params.prompt,
             qualityTier: params.qualityTier,
             aspectRatio: params.aspectRatio,
           })
-        } else {
-          // Video generation using T2V model
-          // Map aspect ratios to valid T2V sizes (wan-video/wan-2.5-t2v supported sizes)
-          // Valid sizes: "832*480", "480*832", "1280*720", "720*1280", "1920*1080", "1080*1920"
-          let size = '1280*720' // default 16:9 HD
+        } else if (params.type === 'video') {
+          // Video generation dispatch
+          switch (params.modelId) {
+            case 'wan-video-i2v':
+              if (!params.imageUrl) throw new Error('Image URL is required for Image-to-Video')
+              response = await import('../../services/aiGenerationService').then(m => m.generateWanVideoI2V({
+                prompt: params.prompt,
+                image: params.imageUrl,
+                last_image: params.lastFrameUrl,
+                resolution: params.resolution as '480p' | '720p',
+              }))
+              break
+            case 'seedance':
+              response = await import('../../services/aiGenerationService').then(m => m.generateSeedanceVideo({
+                prompt: params.prompt,
+                image: params.imageUrl,
+                duration: params.duration,
+                resolution: params.resolution,
+                aspect_ratio: params.aspectRatio,
+                camera_fixed: params.cameraFixed,
+              }))
+              break
+            case 'hailuo':
+              if (!params.imageUrl) throw new Error('First frame image is required for Hailuo')
+              response = await import('../../services/aiGenerationService').then(m => m.generateHailuoVideo({
+                prompt: params.prompt,
+                first_frame_image: params.imageUrl,
+                duration: params.duration,
+                resolution: params.resolution,
+              }))
+              break
+            case 'kling':
+              response = await import('../../services/aiGenerationService').then(m => m.generateKlingVideo({
+                prompt: params.prompt,
+                start_image: params.imageUrl,
+                duration: params.duration,
+                aspect_ratio: params.aspectRatio,
+                negative_prompt: params.negativePrompt,
+              }))
+              break
+            case 'veo':
+              response = await import('../../services/aiGenerationService').then(m => m.generateVeoVideo({
+                prompt: params.prompt,
+                image: params.imageUrl,
+                last_frame: params.lastFrameUrl,
+                duration: params.duration,
+                aspect_ratio: params.aspectRatio,
+                resolution: params.resolution,
+                negative_prompt: params.negativePrompt,
+              }))
+              break
+            case 'wan-video-t2v':
+            default: {
+              // Default to Wan Video T2V
+              const videoSize = params.aspectRatio === '9:16' ? '720*1280' : '1280*720'
 
-          switch (params.aspectRatio) {
-            case '16:9':
-              size = '1280*720'
+              response = await generateVideo({
+                prompt: params.prompt,
+                size: videoSize,
+                duration: params.duration || 5,
+              })
               break
-            case '9:16':
-              size = '720*1280'
-              break
-            case '1:1':
-              // 1:1 (square) not supported by T2V model, use 16:9 as fallback
-              console.warn('[AIGenerationPanel] 1:1 aspect ratio not supported for video, using 16:9')
-              size = '1280*720'
-              break
-            case '4:3':
-              // 4:3 not exactly supported, use closest 16:9
-              console.warn('[AIGenerationPanel] 4:3 aspect ratio not supported for video, using 16:9')
-              size = '1280*720'
-              break
-            default:
-              console.error('[AIGenerationPanel] Invalid aspect ratio:', params.aspectRatio)
-              size = '1280*720'
+            }
           }
+        } else if (params.type === 'audio') {
+          // Audio generation dispatch
+          switch (params.modelId) {
+            case 'music-01':
+              response = await import('../../services/aiGenerationService').then(m => m.generateMusic01Audio({
+                lyrics: params.lyrics,
+                song_file: params.referenceAudioUrl,
+              }))
+              break
+            case 'music-1.5':
+              if (!params.lyrics) throw new Error('Lyrics are required for Music 1.5')
+              response = await import('../../services/aiGenerationService').then(m => m.generateMusic15Audio({
+                prompt: params.prompt,
+                lyrics: params.lyrics!,
+              }))
+              break
+            case 'stable-audio':
+              response = await import('../../services/aiGenerationService').then(m => m.generateStableAudio({
+                prompt: params.prompt,
+                duration: params.duration,
+              }))
+              break
+            case 'lyria':
+            default:
+              response = await import('../../services/aiGenerationService').then(m => m.generateLyriaAudio({
+                prompt: params.prompt,
+                negative_prompt: params.negativePrompt,
+              }))
+              break
+          }
+        }
 
-          console.log('[AIGenerationPanel] Video generation params:', {
-            prompt: params.prompt,
-            aspectRatio: params.aspectRatio,
-            size
+        console.log('[AIGenerationPanel] Generation response:', response)
+
+        if (response && response.job_id) {
+          // Update with job ID
+          updateGenerationStatus(generationId, 'generating', {
+            jobId: response.job_id,
           })
-
-          response = await generateVideo({
-            prompt: params.prompt,
-            size,
-            duration: 5, // Default 5 seconds
+        } else {
+          console.warn('[AIGenerationPanel] No job ID in response:', response)
+          // If no job ID, we should probably fail the generation
+          updateGenerationStatus(generationId, 'failed', {
+            error: 'Failed to start generation: No Job ID returned',
           })
         }
 
-        // Update with job ID
-        updateGenerationStatus(generationId, 'generating', {
-          jobId: response.job_id,
-        })
-
         // Re-enable button after successful generation
         setIsPending(false)
-      } catch (error) {
+      } catch (error: unknown) {
         console.error('Failed to start generation:', error)
+        // Update status to failed so it doesn't stay stuck in 'generating'
+        updateGenerationStatus(generationId, 'failed', {
+          error: error instanceof Error ? error.message : 'Generation failed',
+        })
+
         // Re-enable button after error
         setIsPending(false)
       }
@@ -153,7 +236,7 @@ export default function AIGenerationPanel() {
   const handleRemoveGeneration = useCallback(
     (generationId: string) => {
       const generation = activeGenerations.find((g) => g.id === generationId)
-      if (generation && (generation.status === 'completed' || generation.status === 'failed')) {
+      if (generation && (generation.status === 'completed' || generation.status === 'failed' || generation.status === 'cancelled')) {
         // Add to history before removing
         if (generation.status === 'completed') {
           addToHistory(generation)
@@ -290,7 +373,7 @@ export default function AIGenerationPanel() {
           })
 
           // Move to completing state to keep skeleton visible
-          moveToCompleting(generation.id)
+          // moveToCompleting(generation.id)
 
           // ✅ REMOVED: importFromUrl() call
           // The backend webhook now handles importing to S3 automatically.
@@ -307,11 +390,11 @@ export default function AIGenerationPanel() {
               await loadAssets()
               console.log('[AIGenerationPanel] Media library refreshed successfully')
               // Clear the completing generation after assets are loaded
-              clearCompletingGeneration(generation.id)
+              // clearCompletingGeneration(generation.id)
             } catch (error) {
               console.error('[AIGenerationPanel] Failed to refresh media library:', error)
               // Still clear the completing generation on error to prevent stuck skeletons
-              clearCompletingGeneration(generation.id)
+              // clearCompletingGeneration(generation.id)
             }
           }, 1500) // 2 second delay for worker to complete (reduced from 3s)
         } else {

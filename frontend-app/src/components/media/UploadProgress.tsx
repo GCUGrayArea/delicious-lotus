@@ -59,10 +59,13 @@ export function UploadProgressItem({
     if (upload.status === 'uploading' && bytesPerSecond > 0) {
       const remainingBytes = upload.file.size * (1 - upload.progress / 100)
       const seconds = remainingBytes / bytesPerSecond
-      setTimeRemaining(seconds)
-    } else {
+      if (seconds !== timeRemaining) {
+        setTimeRemaining(seconds)
+      }
+    } else if (timeRemaining !== 0) {
       setTimeRemaining(0)
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [upload.status, upload.progress, upload.file.size, bytesPerSecond])
 
   const getStatusIcon = () => {

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useId } from 'react';
 import styles from './Radio.module.css';
 
 export interface RadioOption {
@@ -33,7 +33,7 @@ export const Radio: React.FC<RadioProps> = ({
   fullWidth = false,
   className = '',
 }) => {
-  const groupId = `radio-group-${Math.random().toString(36).substr(2, 9)}`;
+  const groupId = useId();
   const hasError = !!error;
 
   const containerClasses = [

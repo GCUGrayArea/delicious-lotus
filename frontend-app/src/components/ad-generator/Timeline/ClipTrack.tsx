@@ -224,7 +224,7 @@ export const ClipTrack: React.FC<ClipTrackProps> = ({
   className = '',
 }) => {
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
-  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [, setDragOverIndex] = useState<number | null>(null);
 
   const handleDragStart = useCallback((e: React.DragEvent, index: number) => {
     setDraggedIndex(index);

@@ -297,7 +297,7 @@ export class PreviewRenderer {
    * Get preview dimensions based on quality setting
    */
   private getPreviewDimensions(): { width: number; height: number } {
-    const { quality, resolution } = this.editorStore.getState().previewSettings
+    const { resolution } = this.editorStore.getState().previewSettings
 
     // Use resolution from preview settings
     return resolution
