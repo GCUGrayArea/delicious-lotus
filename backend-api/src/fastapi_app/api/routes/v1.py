@@ -22,6 +22,7 @@ from fastapi_app.models.schemas import (
     ClipMetadata
 )
 from fastapi_app.core.errors import NotFoundError
+from fastapi_app.services.replicate_service import replicate_service
 
 # Set up module-level logger
 logger = logging.getLogger(__name__)
@@ -358,72 +359,19 @@ async def create_generation(
             logger.warning(f"Webhook URL is local ({webhook_base_url}). Replicate callbacks will FAIL. Video generation status will not update automatically unless you use a tunnel (e.g. ngrok).")
             # We still send it, as some local dev setups might strictly need it, but it likely won't work.
 
-        ffmpeg_request = {
-            "scenes": scenes,
-            "micro_prompts": micro_prompt_texts,
-            "generation_id": generation_id,
-            "aspect_ratio": aspect_ratio,
-            "parallelize": parallelize,
-            "webhook_base_url": webhook_base_url,
-        }
-        logger.warning(f"[VIDEO_GENERATION] Request payload prepared with {len(ffmpeg_request)} fields")
-        logger.warning(f"[VIDEO_GENERATION] Scenes count: {len(scenes)}")
-        logger.warning(f"[VIDEO_GENERATION] Micro-prompts count: {len(micro_prompt_texts)}")
-        for i, prompt in enumerate(micro_prompt_texts):
-            logger.warning(f"[VIDEO_GENERATION] Micro-prompt {i+1} to Replicate: {prompt}")
-
-        import httpx
-
-        # Use localhost for internal service-to-service communication
-        # If we are in Docker, we should use 'backend-api' or 'localhost' depending on network
-        # Assuming this code runs in the SAME container/process for now (monolith mode),
-        # we can call localhost. If separated, this needs env var config.
-        internal_api_url = os.getenv("INTERNAL_API_URL", "http://localhost:8000")
-        
-        logger.warning(f"[VIDEO_GENERATION] ===== MAKING HTTP CALL TO REPLICATE SERVICE =====")
-        logger.warning(f"[VIDEO_GENERATION] Target URL: {internal_api_url}/api/v1/replicate/generate-clips")
-        
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            try:
-                # We call our OWN internal endpoint to trigger clip generation
-                # This decouples the generation request from the actual Replicate calls
-                ffmpeg_http_response = await client.post(
-                    f"{internal_api_url}/api/v1/replicate/generate-clips",
-                    json=ffmpeg_request,
-                    timeout=60.0,
-                )
-                ffmpeg_http_response.raise_for_status()
-                ffmpeg_response = ffmpeg_http_response.json()
-                video_results = ffmpeg_response.get("video_results", [])
-            except httpx.RequestError as e:
-                logger.error(f"[VIDEO_GENERATION] Failed to call internal generate-clips API: {e}")
-                # Don't fail the user request if internal call fails, just log it
-                # The user will see "Queued" but no progress
-                # raise HTTPException(status_code=500, detail=f"Video generation service unavailable: {str(e)}")
-                video_results = [] 
-            except httpx.HTTPStatusError as e:
-                logger.error(
-                    f"[VIDEO_GENERATION] Internal backend returned error {e.response.status_code}: {e.response.text}"
-                )
-                # raise HTTPException(status_code=500, detail=f"Video generation failed: {e.response.text}")
-                video_results = []
-
-        # Store prediction_id mappings for webhook handler
-        if webhook_base_url and video_results:
-            try:
-                from fastapi_app.api.routes.webhooks import store_prediction_mapping
-                for result in video_results:
-                    if result.get('prediction_id') and result.get('clip_id'):
-                        store_prediction_mapping(
-                            prediction_id=result['prediction_id'],
-                            generation_id=generation_id,
-                            clip_id=result['clip_id'],
-                            scene_id=result.get('scene_id', '')
-                        )
-            except ImportError:
-                logger.warning("Could not import store_prediction_mapping - webhook mappings not stored")
-            except Exception as e:
-                logger.error(f"Failed to store prediction mappings: {e}")
+        try:
+            logger.info(f"[VIDEO_GENERATION] Calling ReplicateService directly")
+            video_results = await replicate_service.generate_video_clips(
+                scenes=scenes,
+                micro_prompts=micro_prompt_texts,
+                generation_id=generation_id,
+                aspect_ratio=aspect_ratio,
+                parallelize=parallelize,
+                webhook_base_url=webhook_base_url
+            )
+        except Exception as e:
+            logger.error(f"[VIDEO_GENERATION] Service call failed: {e}")
+            video_results = []
 
         # Store initial video results (all will be "queued" status with webhooks)
         # Webhook handler will update status to "completed" when each clip finishes
