@@ -139,6 +139,13 @@ variable "replicate_api_token" {
   default     = "" # Must be provided
 }
 
+variable "openai_api_key" {
+  description = "OpenAI API Key for prompt analysis"
+  type        = string
+  sensitive   = true
+  default     = "" # Must be provided
+}
+
 variable "cloudfront_secret" {
   description = "Secret header value to verify requests come from CloudFront"
   type        = string

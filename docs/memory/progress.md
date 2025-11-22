@@ -2,10 +2,9 @@
 
 **Purpose:** Track what's actually implemented and working, known bugs, and current status.
 
+**Last Updated:** 2025-11-22 by ProductionFix (Critical 500 Error Fix)
+**Last Updated:** 2025-11-22 by ArchitectureFix (API Architecture Repair)
 **Last Updated:** 2025-11-22 by Agent (Generation Fixes)
-**Last Updated:** 2025-11-22 by Orange (History empty list fix)
-**Last Updated:** 2025-11-22 by Orange (History crash fix)
-**Last Updated:** 2025-11-17 by Silver (Docker integration)
 
 ---
 
@@ -17,6 +16,7 @@
 - ✅ Environment configuration templates
 - ✅ Unified Docker Compose setup
 - ✅ Automatic database initialization
+- ✅ **Production Architecture**: API decoupling implemented to prevent internal routing issues.
 
 ### Frontend
 - ✅ React 19 + Vite + TypeScript project initialized
@@ -32,12 +32,13 @@
 
 ### Backend/AI
 - ✅ Full API Skeleton (Block 0)
-- ✅ Prompt Analysis & Brand Extraction (Block A)
+- ✅ Prompt Analysis & Brand Extraction (Block A) - Explicit error on missing config
 - ✅ Micro-Prompt Builder & Clip Assembly (Block C)
 - ✅ Edit Intent & Timeline Planning (Block D)
 - ✅ Style Vector & Consistency (Block E)
 - ✅ **Video Generation**: Replicate API integration fixed (resolution format) and robust.
-- ✅ Comprehensive logging and self-healing logic in retrieval endpoints.
+- ✅ **Robustness**: Comprehensive logging and self-healing logic in retrieval endpoints.
+- ✅ **Service Architecture**: `ReplicateService` created to handle direct provider interactions without internal HTTP calls.
 
 ### FFmpeg/Video Processing
 - ❓ Status unknown
@@ -50,6 +51,7 @@
 - None currently.
 
 ### Resolved
+- ✅ **500 Error on Generation** (2025-11-22) - Fixed by implementing explicit 503 error for missing keys (instead of silent fallback) and re-enabling video generation.
 - ✅ **Generation Stuck in Processing** (2025-11-22) - Fixed by correcting Replicate resolution parameter (`*` vs `x`) and adding self-healing logic.
 - ✅ **Missing Real-time Updates** (2025-11-22) - Fixed by ensuring webhook handler broadcasts to `generation:{id}` channel.
 - ✅ **Empty History List** (2025-11-22) - Fixed by merging in-memory and database results in `list_generations`.

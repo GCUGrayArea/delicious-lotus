@@ -84,6 +84,41 @@ check_prerequisites() {
     log_info "All prerequisites satisfied ✓"
 }
 
+load_env_vars() {
+    log_info "Loading environment variables..."
+    
+    # Helper function to source only valid variable assignments
+    # This avoids errors from comments or documentation in .env files
+    source_env_file() {
+        local file="$1"
+        if [ -f "$file" ]; then
+            log_info "Loading variables from $file..."
+            set -a # Automatically export all sourced variables
+            
+            # 1. Use grep to find only lines starting with VALID_VAR_NAME=
+            # 2. Use source /dev/stdin to load them into the current shell
+            # This handles quotes and spaces correctly, unlike xargs
+            grep -E '^[A-Za-z_][A-Za-z0-9_]*=' "$file" | source /dev/stdin
+            
+            set +a
+        fi
+    }
+
+    source_env_file "$PROJECT_ROOT/.env"
+    source_env_file "$PROJECT_ROOT/backend-api/.env"
+
+    # Export specific variables for Terraform if they exist in env
+    if [ -n "$OPENAI_API_KEY" ]; then
+        export TF_VAR_openai_api_key="$OPENAI_API_KEY"
+        log_info "Exported OPENAI_API_KEY for Terraform"
+    fi
+
+    if [ -n "$REPLICATE_API_TOKEN" ]; then
+        export TF_VAR_replicate_api_token="$REPLICATE_API_TOKEN"
+        log_info "Exported REPLICATE_API_TOKEN for Terraform"
+    fi
+}
+
 build_frontend() {
     log_info "Building frontend application..."
     cd "$PROJECT_ROOT/frontend-app"
@@ -215,6 +250,7 @@ terraform_destroy() {
 
 full_deployment() {
     check_prerequisites
+    load_env_vars
     build_frontend
     build_backend_image
     terraform_apply
@@ -258,5 +294,4 @@ case "$COMMAND" in
         echo "  apply    - Deploy/update everything (default)"
         echo "  destroy  - Destroy all AWS resources (DANGEROUS)"
         exit 1
-        ;;
 esac

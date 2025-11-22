@@ -185,6 +185,7 @@ module "ecs" {
     AWS_REGION          = var.aws_region
     CORS_ORIGINS        = "${var.cors_origins},https://${module.cloudfront.cloudfront_domain_name}"
     REPLICATE_API_TOKEN = var.replicate_api_token
+    OPENAI_API_KEY      = var.openai_api_key
   }
 
   environment = var.environment
