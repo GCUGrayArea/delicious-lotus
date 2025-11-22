@@ -51,6 +51,8 @@
 - None currently.
 
 ### Resolved
+- ✅ **Replicate 401 Unauthorized** (2025-11-22) - Fixed by removing stale keys from `terraform.tfvars` and forcing usage of correct keys from `.env`.
+- ✅ **OpenAI 500 Error** (2025-11-22) - Fixed by passing `OPENAI_API_KEY` to ECS container via Terraform and `deploy.sh`.
 - ✅ **500 Error on Generation** (2025-11-22) - Fixed by implementing explicit 503 error for missing keys (instead of silent fallback) and re-enabling video generation.
 - ✅ **Generation Stuck in Processing** (2025-11-22) - Fixed by correcting Replicate resolution parameter (`*` vs `x`) and adding self-healing logic.
 - ✅ **Missing Real-time Updates** (2025-11-22) - Fixed by ensuring webhook handler broadcasts to `generation:{id}` channel.

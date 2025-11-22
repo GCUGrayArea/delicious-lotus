@@ -44,7 +44,12 @@
 
 ## Recent Decisions
 
-1. **Explicit Configuration Error** (2025-11-22)
+1. **Secrets Management: Environment Variables as SSOT** (2025-11-22)
+   - **Decision:** Removed API keys (`openai_api_key`, `replicate_api_token`) from `terraform.tfvars` and configured `deploy.sh` to read them from local `.env` files and pass them as `TF_VAR_` environment variables.
+   - **Context:** Hardcoded keys in `terraform.tfvars` were taking precedence over `.env` files, causing persistent auth errors even when `.env` was updated.
+   - **Rationale:** Enforces Single Source of Truth (SSOT) pattern using `.env` files, prevents accidental commit of secrets in `tfvars`, and resolves confusion about which key is being used.
+
+2. **Explicit Configuration Error** (2025-11-22)
    - **Decision:** If prompt analysis (OpenAI) fails due to missing configuration, raise an explicit 503 error with a user-friendly message instead of falling back.
    - **Context:** Users need to be informed if the server is misconfigured (missing keys) rather than getting a degraded "fallback" experience silently.
    - **Rationale:** Clarity for end-users and administrators; "fail fast" behavior is preferred over silent degradation for configuration issues.
