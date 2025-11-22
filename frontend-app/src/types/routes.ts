@@ -14,6 +14,7 @@ export const ROUTES = {
   PROJECT_EDITOR: '/projects/:projectId/editor',
   MEDIA: '/media',
   AD_GENERATOR: '/ad-generator',
+  AD_GENERATOR_PROMPT_RESULTS: '/ad-generator/prompt-results',
   SETTINGS: '/settings',
 } as const;
 

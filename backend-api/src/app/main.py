@@ -2,6 +2,7 @@
 
 import os
 from pathlib import Path
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
@@ -150,10 +151,12 @@ def create_app() -> FastAPI:  # noqa: C901
     app.include_router(fastapi_websocket_router)
 
     # Mount static files for frontend
-    # Use env var for production/Docker, fallback to relative path for local dev
+    # Prefer explicit env, then default Docker path, then repo-relative path for local dev
     frontend_path_env = os.getenv("FRONTEND_PATH")
     if frontend_path_env:
         FRONTEND_DIST_PATH = Path(frontend_path_env)
+    elif Path("/app/frontend/dist").exists():
+        FRONTEND_DIST_PATH = Path("/app/frontend/dist")
     else:
         # backend-api/src/app/main.py -> parent=app -> parent=src -> frontend/dist
         FRONTEND_DIST_PATH = Path(__file__).parent.parent / "frontend" / "dist"
@@ -166,14 +169,15 @@ def create_app() -> FastAPI:  # noqa: C901
         # Mount assets directory if it exists
         if FRONTEND_ASSETS_PATH.exists() and FRONTEND_ASSETS_PATH.is_dir():
             app.mount("/assets", StaticFiles(directory=str(FRONTEND_ASSETS_PATH)), name="static-assets")
+            logger.info(f"Mounted frontend assets from {FRONTEND_ASSETS_PATH}")
 
         # Serve index.html for SPA routing (catch-all for non-API routes)
         # NOTE: This catch-all route MUST be defined after all API routes
         @app.get("/{full_path:path}")
         async def serve_spa(full_path: str):
             """Serve frontend SPA, with fallback to index.html for client-side routing"""
-            # Skip API routes and health checks (they're already handled by previous routes)
-            if full_path.startswith("api/") or full_path.startswith("health") or full_path == "health" or full_path.startswith("internal/"):
+            # Skip API routes, docs, and health checks (already handled)
+            if full_path.startswith(("api/", "health", "internal/", "docs", "redoc", "openapi.json")) or full_path == "health":
                 raise HTTPException(status_code=404, detail="Not found")
 
             # Try to serve the requested file
@@ -183,6 +187,9 @@ def create_app() -> FastAPI:  # noqa: C901
 
             # Fallback to index.html for SPA routing
             return FileResponse(FRONTEND_INDEX_PATH)
+        logger.info(f"Frontend serving enabled from {FRONTEND_DIST_PATH}")
+    else:
+        logger.warning(f"Frontend not found at {FRONTEND_DIST_PATH}, frontend serving disabled")
 
     @app.on_event("startup")
     async def startup_event() -> None:
@@ -272,43 +279,6 @@ def create_app() -> FastAPI:  # noqa: C901
             logger.info("Redis Bridge stopped")
         except Exception as e:
             logger.error(f"Failed to stop Redis Bridge: {e}")
-
-    # Mount static files for frontend
-    
-    # In Docker container, frontend is at /app/frontend/dist
-    # For local dev, check parent (repo root) / frontend-app / dist
-    FRONTEND_DIST_PATH = Path("/app/frontend/dist") if os.path.exists("/app/frontend/dist") else Path(__file__).parent.parent.parent.parent / "frontend-app" / "dist"
-    FRONTEND_ASSETS_PATH = FRONTEND_DIST_PATH / "assets"
-    FRONTEND_INDEX_PATH = FRONTEND_DIST_PATH / "index.html"
-
-    # Only set up frontend serving if index.html exists (frontend is built)
-    if FRONTEND_INDEX_PATH.exists() and FRONTEND_INDEX_PATH.is_file():
-        # Mount assets directory if it exists
-        if FRONTEND_ASSETS_PATH.exists() and FRONTEND_ASSETS_PATH.is_dir():
-            app.mount("/assets", StaticFiles(directory=str(FRONTEND_ASSETS_PATH)), name="static-assets")
-            logger.info(f"Mounted frontend assets from {FRONTEND_ASSETS_PATH}")
-
-        # Serve index.html for SPA routing (catch-all for non-API routes)
-        @app.get("/{full_path:path}")
-        async def serve_spa(full_path: str):
-            """Serve frontend SPA, with fallback to index.html for client-side routing"""
-            # Skip API routes and docs - they're already handled
-            if full_path.startswith("api/") or full_path.startswith("internal/") or full_path.startswith("docs") or full_path.startswith("redoc") or full_path.startswith("openapi.json"):
-                from fastapi import HTTPException
-                raise HTTPException(status_code=404, detail="Not found")
-
-            # Try to serve the requested file
-            file_path = FRONTEND_DIST_PATH / full_path
-            if file_path.is_file():
-                return FileResponse(file_path)
-
-            # Fallback to index.html for SPA routing
-            return FileResponse(FRONTEND_INDEX_PATH)
-
-        logger.info(f"Frontend serving enabled from {FRONTEND_DIST_PATH}")
-    else:
-        logger.warning(f"Frontend not found at {FRONTEND_DIST_PATH}, frontend serving disabled")
-
     return app
 
 

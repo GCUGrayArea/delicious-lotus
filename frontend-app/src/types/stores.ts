@@ -373,7 +373,7 @@ export type WebSocketStore = WebSocketState & WebSocketActions
 // AI Generation Store Types
 // ============================================================================
 
-export type GenerationType = 'image' | 'video'
+export type GenerationType = 'image' | 'video' | 'audio'
 export type QualityTier = 'draft' | 'production'
 export type GenerationStatus = 'queued' | 'generating' | 'completed' | 'failed' | 'cancelled'
 

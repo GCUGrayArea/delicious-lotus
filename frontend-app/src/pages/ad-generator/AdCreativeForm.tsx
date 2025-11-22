@@ -10,6 +10,7 @@ import {
   ReviewStep,
 } from '@/components/ad-generator/GenerationForm';
 import { ConfirmDialog } from '@/components/ad-generator/ui/ConfirmDialog';
+import { Sparkles } from 'lucide-react';
 
 export const AdCreativeForm: React.FC = () => {
   const {
@@ -18,16 +19,30 @@ export const AdCreativeForm: React.FC = () => {
     errors,
     isSubmitting,
     submitError,
+    analysisResult,
+    promptResult,
+    promptError,
+    isGeneratingPrompts,
     updateField,
     handleFieldBlur,
     nextStep,
     previousStep,
     goToStep,
     submitForm,
+    generatePrompts,
     showRestoreDialog,
     handleResume,
     handleDiscard,
   } = useGenerationForm();
+
+  const renderJsonBlock = (data: unknown) => {
+    if (!data) return <p className="text-sm text-muted-foreground">No data returned.</p>;
+    return (
+      <pre className="rounded-lg bg-muted/60 p-4 text-xs text-foreground overflow-x-auto border border-border">
+        {JSON.stringify(data, null, 2)}
+      </pre>
+    );
+  };
 
   // Calculate completed steps
   const completedSteps: number[] = [];
@@ -102,21 +117,32 @@ export const AdCreativeForm: React.FC = () => {
   };
 
   return (
-    <div className="min-h-full bg-background p-6 md:p-8 sm:p-4">
-      <div className="max-w-[900px] mx-auto flex flex-col gap-6 lg:max-w-[900px] md:max-w-[720px]">
-        <header className="text-center py-6 sm:py-4">
-          <h1 className="text-3xl font-bold text-foreground mb-2 leading-tight sm:text-2xl">Create Ad Creative Video</h1>
-          <p className="text-lg text-muted-foreground m-0 leading-normal sm:text-base">
+    <div className="min-h-screen bg-background pb-12">
+      <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
+        {/* Header */}
+        <header className="text-center mb-8">
+          <div className="inline-flex items-center gap-2 text-primary mb-3">
+            <Sparkles className="h-5 w-5" />
+            <span className="text-sm font-medium uppercase tracking-wider">AI Video Generator</span>
+          </div>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+            Create Ad Creative Video
+          </h1>
+          <p className="mt-2 text-muted-foreground">
             Generate a professional ad creative video in minutes with AI
           </p>
         </header>
 
-        <StepIndicator
-          currentStep={currentStep}
-          completedSteps={completedSteps}
-          onStepClick={(step) => goToStep(step as 1 | 2 | 3 | 4)}
-        />
+        {/* Stepper */}
+        <div className="mb-8">
+          <StepIndicator
+            currentStep={currentStep}
+            completedSteps={completedSteps}
+            onStepClick={(step) => goToStep(step as 1 | 2 | 3 | 4)}
+          />
+        </div>
 
+        {/* Form Content */}
         <FormContainer
           currentStep={currentStep}
           onNext={nextStep}
@@ -124,6 +150,8 @@ export const AdCreativeForm: React.FC = () => {
           onSubmit={submitForm}
           isSubmitting={isSubmitting}
           canGoNext={true}
+          onGeneratePrompts={generatePrompts}
+          isGeneratingPrompts={isGeneratingPrompts}
         >
           {renderStepContent()}
         </FormContainer>
@@ -141,6 +169,97 @@ export const AdCreativeForm: React.FC = () => {
         onConfirm={handleResume}
         onCancel={handleDiscard}
       />
+
+      {(analysisResult || promptResult || promptError) && (
+        <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 mt-8">
+          <div className="bg-card border border-primary/30 rounded-xl shadow-sm p-6 space-y-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="inline-flex items-center gap-2 text-primary mb-2">
+                  <Sparkles className="h-4 w-4" />
+                  <span className="text-xs font-semibold uppercase tracking-wide">Analysis Output</span>
+                </div>
+                <h3 className="text-xl font-semibold text-foreground">We analyzed your request</h3>
+                <p className="text-sm text-muted-foreground">
+                  Prompt analysis, brand insights, scene breakdown, and generated micro-prompts are returned below.
+                </p>
+              </div>
+              {analysisResult?.generation_id && (
+                <div className="text-right">
+                  <p className="text-xs uppercase text-muted-foreground">Generation ID</p>
+                  <p className="font-mono text-sm text-foreground">{analysisResult.generation_id}</p>
+                </div>
+              )}
+            </div>
+
+            {analysisResult && (
+              <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4">
+                <div className="rounded-lg border border-border bg-muted/40 p-3">
+                  <p className="text-xs text-muted-foreground">Scenes</p>
+                  <p className="text-lg font-semibold text-foreground">{analysisResult.scenes?.length ?? 0}</p>
+                </div>
+                <div className="rounded-lg border border-border bg-muted/40 p-3">
+                  <p className="text-xs text-muted-foreground">Micro-prompts</p>
+                  <p className="text-lg font-semibold text-foreground">{analysisResult.micro_prompts?.length ?? 0}</p>
+                </div>
+                <div className="rounded-lg border border-border bg-muted/40 p-3">
+                  <p className="text-xs text-muted-foreground">Brand Config</p>
+                  <p className="text-lg font-semibold text-foreground">
+                    {analysisResult.brand_config ? 'Returned' : 'None'}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-border bg-muted/40 p-3">
+                  <p className="text-xs text-muted-foreground">Status</p>
+                  <p className="text-lg font-semibold text-foreground capitalize">{analysisResult.status}</p>
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-3">
+              {analysisResult && (
+                <>
+                  <div>
+                    <p className="text-sm font-semibold text-foreground mb-1">Prompt Analysis</p>
+                    {renderJsonBlock(analysisResult.prompt_analysis)}
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-foreground mb-1">Brand Analysis</p>
+                    {renderJsonBlock(analysisResult.brand_config)}
+                  </div>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div>
+                      <p className="text-sm font-semibold text-foreground mb-1">Scene Decomposition</p>
+                      {renderJsonBlock(analysisResult.scenes)}
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-foreground mb-1">Micro-prompts</p>
+                      {renderJsonBlock(analysisResult.micro_prompts)}
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {promptResult && (
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-sm font-semibold text-foreground">Clip Prompts (OpenAI)</p>
+                    <p className="text-xs text-muted-foreground">
+                      {promptResult.content?.length ?? 0} clips
+                    </p>
+                  </div>
+                  {renderJsonBlock(promptResult)}
+                </div>
+              )}
+
+              {promptError && (
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+                  <span className="text-sm text-destructive">{promptError}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

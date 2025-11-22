@@ -1,5 +1,6 @@
 import React from 'react';
-import { Button } from '../ui/Button';
+import { Button } from '@/components/ui/button';
+import { ArrowLeft, ArrowRight, Sparkles } from 'lucide-react';
 
 interface FormContainerProps {
   children: React.ReactNode;
@@ -9,6 +10,8 @@ interface FormContainerProps {
   onSubmit: () => void;
   isSubmitting?: boolean;
   canGoNext?: boolean;
+  onGeneratePrompts?: () => void;
+  isGeneratingPrompts?: boolean;
 }
 
 export const FormContainer: React.FC<FormContainerProps> = ({
@@ -19,47 +22,82 @@ export const FormContainer: React.FC<FormContainerProps> = ({
   onSubmit,
   isSubmitting = false,
   canGoNext = true,
+  onGeneratePrompts,
+  isGeneratingPrompts = false,
 }) => {
   const isFirstStep = currentStep === 1;
-  const isLastStep = currentStep === 4; // Assuming 4 steps
+  const isLastStep = currentStep === 4;
 
   return (
-    <div className="flex flex-col gap-8 w-full md:gap-4 sm:gap-3">
-      <div className="bg-card rounded-lg p-8 shadow-md min-h-[400px] md:p-4 md:rounded-md md:min-h-[300px] sm:p-3 sm:min-h-[250px]">
+    <div className="flex flex-col gap-6 w-full">
+      {/* Content area */}
+      <div className="bg-card rounded-xl border border-border p-6 md:p-8 shadow-sm min-h-[400px]">
         {children}
       </div>
 
-      <div className="flex justify-between items-center gap-4 pt-4 border-t border-border md:flex-col-reverse md:gap-3 md:sticky md:bottom-0 md:bg-card md:p-4 md:-mx-4 md:border-t-2 md:z-20 md:shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
+      {/* Navigation buttons */}
+      <div className="flex flex-col-reverse sm:flex-row items-center justify-between gap-3 pt-2">
         {!isFirstStep ? (
           <Button
             variant="outline"
             onClick={onPrevious}
             disabled={isSubmitting}
-            className="min-w-[140px] md:w-full md:min-w-auto md:min-h-[44px]"
+            className="w-full sm:w-auto gap-2"
           >
+            <ArrowLeft className="h-4 w-4" />
             Back
           </Button>
         ) : (
-          <div className="flex-1 md:hidden" />
+          <div className="hidden sm:block" />
         )}
 
         {isLastStep ? (
-          <Button
-            variant="primary"
-            onClick={onSubmit}
-            loading={isSubmitting}
-            className="min-w-[140px] md:w-full md:min-w-auto md:min-h-[44px]"
-          >
-            Create Video
-          </Button>
+          <div className="w-full sm:w-auto flex flex-col sm:flex-row gap-3 sm:gap-2 justify-end">
+            <Button
+              variant="outline"
+              onClick={onGeneratePrompts}
+              disabled={isGeneratingPrompts}
+              className="w-full sm:w-auto gap-2"
+            >
+              {isGeneratingPrompts ? (
+                <>
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                  Generating Prompts...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-4 w-4" />
+                  Generate Prompts
+                </>
+              )}
+            </Button>
+
+            <Button
+              onClick={onSubmit}
+              disabled={isSubmitting}
+              className="w-full sm:w-auto gap-2"
+            >
+              {isSubmitting ? (
+                <>
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                  Analyzing...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-4 w-4" />
+                  Run Analysis
+                </>
+              )}
+            </Button>
+          </div>
         ) : (
           <Button
-            variant="primary"
             onClick={onNext}
             disabled={!canGoNext}
-            className="min-w-[140px] md:w-full md:min-w-auto md:min-h-[44px]"
+            className="w-full sm:w-auto gap-2"
           >
-            Next Step
+            Continue
+            <ArrowRight className="h-4 w-4" />
           </Button>
         )}
       </div>

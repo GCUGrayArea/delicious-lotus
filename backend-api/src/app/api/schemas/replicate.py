@@ -8,6 +8,53 @@ from pydantic import BaseModel, Field, HttpUrl
 # ============================================================================
 
 
+
+class FluxSchnellRequest(BaseModel):
+    """Request schema for Black Forest Labs Flux Schnell model.
+
+    The Flux Schnell model generates high-quality images from text prompts very quickly.
+    """
+
+    prompt: str = Field(
+        ...,
+        description="Text prompt for image generation",
+        min_length=1,
+        max_length=2000,
+        examples=["A futuristic city with flying cars at sunset"]
+    )
+
+    aspect_ratio: str = Field(
+        default="1:1",
+        description="Aspect ratio of the generated image",
+        examples=["1:1", "16:9", "21:9", "3:2", "2:3", "4:5", "5:4", "3:4", "4:3", "9:16", "9:21"]
+    )
+
+    output_format: str = Field(
+        default="webp",
+        description="Format of the output image",
+        examples=["webp", "jpg", "png"]
+    )
+
+    output_quality: int = Field(
+        default=80,
+        description="Quality of the output image (0-100)",
+        ge=0,
+        le=100,
+        examples=[80, 90, 100]
+    )
+
+    disable_safety_checker: bool = Field(
+        default=False,
+        description="Disable safety checker for generated images"
+    )
+
+    seed: int | None = Field(
+        default=None,
+        description="Random seed. Set for reproducible generation",
+        examples=[42, 12345]
+    )
+
+
 class NanoBananaRequest(BaseModel):
     """Request schema for Nano-Banana image generation model.
 
@@ -45,22 +92,39 @@ class WanVideoI2VRequest(BaseModel):
         examples=["A serene ocean wave crashing on the shore"]
     )
 
-    image: HttpUrl | None = Field(
-        default=None,
-        description="Optional input image to generate video from",
+    image: HttpUrl = Field(
+        ...,
+        description="Input image to generate video from",
         examples=["https://example.com/image.png"]
     )
 
-    last_image: HttpUrl | None = Field(
+    audio: HttpUrl | None = Field(
         default=None,
-        description="Optional last image to condition the video generation for smoother transitions",
-        examples=["https://example.com/last_frame.png"]
+        description="Audio file (wav/mp3, 3-30s, <=15MB) for voice/music synchronization",
+        examples=["https://example.com/audio.mp3"]
+    )
+
+    duration: int = Field(
+        default=5,
+        description="Duration of the generated video in seconds",
+        examples=[5, 10]
     )
 
     resolution: str = Field(
-        default="480p",
-        description="Resolution of video: 480p or 720p",
-        examples=["480p", "720p"]
+        default="720p",
+        description="Resolution of video: 480p, 720p, or 1080p",
+        examples=["480p", "720p", "1080p"]
+    )
+
+    negative_prompt: str = Field(
+        default="",
+        description="Negative prompt to avoid certain elements",
+        examples=["blurry, low quality"]
+    )
+
+    enable_prompt_expansion: bool = Field(
+        default=True,
+        description="If set to true, the prompt optimizer will be enabled"
     )
 
 

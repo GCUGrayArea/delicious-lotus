@@ -88,6 +88,10 @@ export interface CreateGenerationResponse {
   created_at: string;
   estimated_completion: string;
   websocket_url: string;
+  prompt_analysis?: Record<string, unknown> | null;
+  brand_config?: Record<string, unknown> | null;
+  scenes?: Array<Record<string, unknown>> | null;
+  micro_prompts?: Array<Record<string, unknown>> | null;
 }
 
 export interface ClipInfo {
@@ -160,6 +164,27 @@ export interface GetAssetsResponse {
     audio?: AudioAsset;
     metadata?: AssetMetadata;
   };
+}
+
+// ============================================================================
+// Prompt Generation Types
+// ============================================================================
+
+export interface VideoPromptRequest {
+  prompt: string;
+  num_clips?: number;
+  clip_length?: number;
+}
+
+export interface VideoPromptClip {
+  video_prompt: string;
+  image_prompt: string;
+  length: number;
+}
+
+export interface VideoPromptResponse {
+  success: string;
+  content: VideoPromptClip[];
 }
 
 // ============================================================================

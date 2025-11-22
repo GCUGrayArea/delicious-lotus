@@ -7,6 +7,7 @@ import { extractMediaMetadata } from './mediaMetadataExtractor'
 
 // API base URL - should be configured from environment
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+console.log('[UploadService] Initialized with API_BASE_URL:', API_BASE_URL)
 
 export interface PresignedUrlRequest {
   name: string
@@ -92,6 +93,12 @@ async function retryWithBackoff<T>(
 export async function requestPresignedUrl(
   request: PresignedUrlRequest
 ): Promise<PresignedUrlResponse> {
+  console.log('[UploadService] Requesting presigned URL:', {
+    url: `${API_BASE_URL}/api/v1/media/upload`,
+    request: request,
+    checksumLength: request.checksum.length,
+  })
+
   const response = await retryWithBackoff(async () => {
     const res = await fetch(`${API_BASE_URL}/api/v1/media/upload`, {
       method: 'POST',
@@ -103,8 +110,20 @@ export async function requestPresignedUrl(
 
     if (!res.ok) {
       const retryable = res.status === 429 || res.status >= 500
+      let errorDetail = res.statusText
+      try {
+        const errorBody = await res.text()
+        console.error('[UploadService] Upload error response:', {
+          status: res.status,
+          statusText: res.statusText,
+          body: errorBody,
+        })
+        errorDetail = errorBody || res.statusText
+      } catch (e) {
+        console.error('[UploadService] Could not parse error response')
+      }
       throw new UploadError(
-        `Failed to get presigned URL: ${res.statusText}`,
+        `Failed to get presigned URL: ${errorDetail}`,
         res.status,
         retryable
       )
@@ -124,6 +143,12 @@ async function calculateChecksum(file: File): Promise<string> {
   const hashBuffer = await crypto.subtle.digest('SHA-256', buffer)
   const hashArray = Array.from(new Uint8Array(hashBuffer))
   const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
+  console.log('[UploadService] Calculated checksum:', {
+    fileName: file.name,
+    fileSize: file.size,
+    checksum: hashHex,
+    checksumLength: hashHex.length,
+  })
   return hashHex
 }
 
@@ -131,6 +156,7 @@ async function calculateChecksum(file: File): Promise<string> {
  * Determine media type from file MIME type
  */
 function getMediaType(mimeType: string): 'image' | 'video' | 'audio' {
+  console.log('[UploadService] Detecting media type for MIME:', mimeType)
   if (mimeType.startsWith('image/')) return 'image'
   if (mimeType.startsWith('video/')) return 'video'
   if (mimeType.startsWith('audio/')) return 'audio'
@@ -182,11 +208,18 @@ export async function uploadToS3(
       if (xhr.status >= 200 && xhr.status < 300) {
         // For POST uploads, ETag might not be in headers
         const etag = xhr.getResponseHeader('ETag') || ''
+        console.log('[UploadService] S3 upload successful, ETag:', etag)
         resolve({ etag: etag.replace(/"/g, '') })
       } else {
+        console.error('[UploadService] S3 upload failed:', {
+          status: xhr.status,
+          statusText: xhr.statusText,
+          responseText: xhr.responseText,
+          responseHeaders: xhr.getAllResponseHeaders(),
+        })
         reject(
           new UploadError(
-            `S3 upload failed with status ${xhr.status}`,
+            `S3 upload failed with status ${xhr.status}: ${xhr.responseText || xhr.statusText}`,
             xhr.status,
             xhr.status >= 500
           )
@@ -214,19 +247,32 @@ export async function uploadToS3(
     }
 
     // Start upload - use POST method with FormData for presigned POST uploads
+    console.log('[UploadService] Starting S3 upload:', {
+      url: presignedUrl,
+      method: uploadParams.method,
+      fields: uploadParams.fields,
+      fileName: file.name,
+      fileType: file.type,
+      fileSize: file.size,
+    })
+
     xhr.open(uploadParams.method, presignedUrl)
     xhr.timeout = 10 * 60 * 1000 // 10 minutes timeout
 
     // Build FormData with all required fields
     const formData = new FormData()
 
-    // Add all fields from the presigned URL params
+    // Add all fields from the presigned URL params IN ORDER
+    // These fields are signed by AWS and must be sent exactly as provided
     Object.entries(uploadParams.fields).forEach(([key, value]) => {
+      console.log(`[UploadService] Adding form field: ${key} = ${value}`)
       formData.append(key, value)
     })
 
-    // File must be the last field
+    // File must be the LAST field in the form
+    // IMPORTANT: The field name must be 'file' (not the actual filename)
     formData.append('file', file)
+    console.log('[UploadService] Added file field (last):')
 
     xhr.send(formData)
   })

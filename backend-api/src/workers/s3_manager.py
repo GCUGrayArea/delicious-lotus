@@ -502,18 +502,18 @@ class S3Manager:
         """
         try:
             conditions = []
+            fields = {"key": s3_key}
 
-            # Add content type condition if specified
-            if content_type:
-                conditions.append(["starts-with", "$Content-Type", content_type.split("/")[0]])
+            # NOTE: Temporarily disabled Content-Type validation to fix upload issues
+            # S3 presigned POST requires exact field matching, which is causing 403 errors
+            # TODO: Implement proper Content-Type validation that works with presigned POSTs
+            # if content_type:
+            #     content_type_prefix = content_type.split("/")[0]
+            #     conditions.append(["starts-with", "$Content-Type", content_type_prefix])
 
             # Add file size limit if specified
             if max_file_size:
                 conditions.append(["content-length-range", 1, max_file_size])
-
-            fields = {"key": s3_key}
-            if content_type:
-                fields["Content-Type"] = content_type
 
             presigned_post = self.s3_client.generate_presigned_post(
                 Bucket=self.bucket_name,

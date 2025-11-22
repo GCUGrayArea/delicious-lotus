@@ -27,10 +27,11 @@ interface MediaPreviewModalProps {
 
 /**
  * MediaPreviewModal - Full-size preview modal for media assets
- * Shows images or playable videos with source URL link
+ * Shows images, playable videos, or audio files with source URL link
  */
 export function MediaPreviewModal({ asset, isOpen, onClose, onUpdate }: MediaPreviewModalProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
+  const audioRef = useRef<HTMLAudioElement>(null)
   const [isCopied, setIsCopied] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [editedName, setEditedName] = useState('')
@@ -43,9 +44,17 @@ export function MediaPreviewModal({ asset, isOpen, onClose, onUpdate }: MediaPre
       setEditedName(asset.name)
       setIsEditing(false)
       setError(null)
-    } else if (!isOpen && videoRef.current) {
-      videoRef.current.pause()
-      videoRef.current.currentTime = 0
+    } else if (!isOpen) {
+      // Pause and reset video
+      if (videoRef.current) {
+        videoRef.current.pause()
+        videoRef.current.currentTime = 0
+      }
+      // Pause and reset audio
+      if (audioRef.current) {
+        audioRef.current.pause()
+        audioRef.current.currentTime = 0
+      }
     }
   }, [isOpen, asset])
 
@@ -53,6 +62,7 @@ export function MediaPreviewModal({ asset, isOpen, onClose, onUpdate }: MediaPre
 
   const isVideo = asset.type === 'video'
   const isImage = asset.type === 'image'
+  const isAudio = asset.type === 'audio'
 
   const cleanUrl = asset.url.split('?')[0]
 
@@ -332,7 +342,50 @@ export function MediaPreviewModal({ asset, isOpen, onClose, onUpdate }: MediaPre
             </video>
           )}
 
-          {!isImage && !isVideo && (
+          {isAudio && (
+            <div className="flex flex-col items-center justify-center gap-6 p-8">
+              {/* Audio Waveform Placeholder / Icon */}
+              <div className="w-32 h-32 bg-zinc-800 rounded-full flex items-center justify-center">
+                <svg
+                  className="w-16 h-16 text-zinc-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"
+                  />
+                </svg>
+              </div>
+
+              {/* Audio Player */}
+              <audio
+                ref={audioRef}
+                src={cleanUrl}
+                controls
+                autoPlay
+                className="w-full max-w-md"
+              >
+                Your browser does not support the audio element.
+              </audio>
+
+              {/* Audio Info */}
+              <div className="text-center">
+                <p className="text-zinc-300 font-medium">{asset.name}</p>
+                {asset.duration && (
+                  <p className="text-sm text-zinc-500 mt-1">
+                    Duration: {Math.floor(asset.duration / 60)}:{String(Math.floor(asset.duration % 60)).padStart(2, '0')}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {!isImage && !isVideo && !isAudio && (
             <div className="text-center text-zinc-400 p-8">
               <p className="mb-2">Preview not available for this media type</p>
               <a

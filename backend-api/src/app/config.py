@@ -1,5 +1,6 @@
 """Application configuration using Pydantic settings."""
 
+import os
 from functools import lru_cache
 from typing import Annotated, Literal
 
@@ -160,6 +161,9 @@ class Settings(BaseSettings):
         description="JWT token expiration time in minutes",
     )
 
+    # External API Keys
+    openai_api_key: str = Field(default="", description="OpenAI API Key for prompt generation")
+
     # Feature Flags
     feature_dev_api_enabled: bool = Field(
         default=False, description="Enable development/debugging API endpoints"
@@ -284,6 +288,38 @@ class Settings(BaseSettings):
             "metrics": self.feature_metrics_enabled,
             "advanced_filters": self.feature_advanced_filters_enabled,
         }
+
+    @field_validator("s3_bucket_name", mode="before")
+    @classmethod
+    def _fallback_s3_bucket(cls, v: str) -> str:
+        """Allow legacy S3_BUCKET env var to populate s3_bucket_name."""
+        if v:
+            return v
+        return os.getenv("S3_BUCKET", "")
+
+    @field_validator("s3_access_key_id", mode="before")
+    @classmethod
+    def _fallback_s3_access_key(cls, v: str) -> str:
+        """Allow legacy AWS_ACCESS_KEY_ID env var to populate s3_access_key_id."""
+        if v:
+            return v
+        return os.getenv("AWS_ACCESS_KEY_ID", "")
+
+    @field_validator("s3_secret_access_key", mode="before")
+    @classmethod
+    def _fallback_s3_secret_key(cls, v: str) -> str:
+        """Allow legacy AWS_SECRET_ACCESS_KEY env var to populate s3_secret_access_key."""
+        if v:
+            return v
+        return os.getenv("AWS_SECRET_ACCESS_KEY", "")
+
+    @field_validator("s3_region", mode="before")
+    @classmethod
+    def _fallback_s3_region(cls, v: str) -> str:
+        """Allow legacy AWS_REGION env var to populate s3_region."""
+        if v and v != "us-east-1":
+            return v
+        return os.getenv("AWS_REGION", v or "us-east-1")
 
 
 @lru_cache

@@ -4,12 +4,16 @@
 
 import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ROUTES } from '@/types/routes';
 import type { AdCreativeFormData } from '@/types/ad-generator/form';
-import { createGeneration } from '@/services/ad-generator/services/generation';
+import { createGeneration, generateVideoClipPrompts } from '@/services/ad-generator/services/generation';
 import { useFormValidation } from './useFormValidation';
 import { useFormPersistence } from './useFormPersistence';
-import type { CreateGenerationRequest } from '@/services/ad-generator/types';
+import type {
+  CreateGenerationRequest,
+  CreateGenerationResponse,
+  VideoPromptRequest,
+  VideoPromptResponse,
+} from '@/services/ad-generator/types';
 
 const INITIAL_STATE: AdCreativeFormData = {
   prompt: '',
@@ -34,6 +38,10 @@ export function useGenerationForm() {
   const [formData, setFormData] = useState<AdCreativeFormData>(INITIAL_STATE);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [analysisResult, setAnalysisResult] = useState<CreateGenerationResponse | null>(null);
+  const [promptResult, setPromptResult] = useState<VideoPromptResponse | null>(null);
+  const [promptError, setPromptError] = useState<string | null>(null);
+  const [isGeneratingPrompts, setIsGeneratingPrompts] = useState(false);
 
   const {
     errors,
@@ -202,6 +210,8 @@ export function useGenerationForm() {
 
     setIsSubmitting(true);
     setSubmitError(null);
+    setAnalysisResult(null);
+    setPromptResult(null);
 
     try {
       const request = buildRequest();
@@ -210,8 +220,8 @@ export function useGenerationForm() {
       // Clear localStorage draft on success
       clearStorage();
 
-      // Navigate to progress page
-      navigate(`${ROUTES.AD_GENERATOR}/generation/${response.generation_id}`);
+      // Surface analysis output to the UI
+      setAnalysisResult(response);
     } catch (error: any) {
       console.error('Failed to create generation:', error);
 
@@ -236,7 +246,43 @@ export function useGenerationForm() {
     } finally {
       setIsSubmitting(false);
     }
-  }, [formData, validateCurrentStep, buildRequest, clearStorage, navigate]);
+  }, [formData, validateCurrentStep, buildRequest, clearStorage]);
+
+  /**
+   * Generate clip-level prompts via backend OpenAI helper
+   */
+  const generatePrompts = useCallback(async () => {
+    setPromptError(null);
+    setPromptResult(null);
+    setIsGeneratingPrompts(true);
+
+    try {
+      // Derive a sensible number of clips from duration (default 5s each, clamp 3-10 clips)
+      const estimatedClips = Math.max(3, Math.min(10, Math.round(formData.duration / 5)));
+      const clipLength = Math.max(
+        3,
+        Math.min(10, Math.round(formData.duration / Math.max(estimatedClips, 1)))
+      );
+
+      const request: VideoPromptRequest = {
+        prompt: formData.prompt,
+        num_clips: estimatedClips,
+        clip_length: clipLength,
+      };
+
+      const response = await generateVideoClipPrompts(request);
+      setPromptResult(response);
+      // Persist for navigation and navigate to results page
+      sessionStorage.setItem('promptResult', JSON.stringify(response));
+      navigate('/ad-generator/prompt-results', { state: { promptResult: response } });
+    } catch (error: any) {
+      console.error('Failed to generate clip prompts:', error);
+      const message = error?.message || 'Failed to generate clip prompts. Please try again.';
+      setPromptError(message);
+    } finally {
+      setIsGeneratingPrompts(false);
+    }
+  }, [formData, navigate]);
 
   /**
    * Reset form to initial state
@@ -254,6 +300,10 @@ export function useGenerationForm() {
     currentStep,
     formData,
     errors,
+    analysisResult,
+    promptResult,
+    promptError,
+    isGeneratingPrompts,
     // Form persistence dialog
     showRestoreDialog,
     handleResume,
@@ -269,6 +319,7 @@ export function useGenerationForm() {
     previousStep,
     goToStep,
     submitForm,
+    generatePrompts,
     resetForm,
   };
 }

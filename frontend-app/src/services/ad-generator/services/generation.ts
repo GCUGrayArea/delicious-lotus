@@ -12,6 +12,8 @@ import type {
   CancelGenerationResponse,
   GetAssetsResponse,
   PaginationParams,
+  VideoPromptRequest,
+  VideoPromptResponse,
 } from '@/services/ad-generator/types';
 
 export interface DeleteGenerationResponse {
@@ -97,6 +99,19 @@ export const deleteGeneration = async (
   generationId: string
 ): Promise<DeleteGenerationResponse> => {
   return del<DeleteGenerationResponse>(`/v1/generations/${generationId}`);
+};
+
+/**
+ * Generate structured video prompts (clip-level) via OpenAI
+ */
+export const generateVideoClipPrompts = async (
+  request: VideoPromptRequest
+): Promise<VideoPromptResponse> => {
+  return post<VideoPromptResponse, VideoPromptRequest>(
+    // Note: router is mounted under /prompts with its own /prompts prefix, so path repeats
+    '/v1/prompts/prompts/generate-video-clips',
+    request
+  );
 };
 
 /**

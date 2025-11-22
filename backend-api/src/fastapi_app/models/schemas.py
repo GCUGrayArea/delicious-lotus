@@ -116,6 +116,18 @@ class CreateGenerationResponse(BaseModel):
     created_at: datetime
     estimated_completion: datetime
     websocket_url: str = Field(..., description="WebSocket URL for real-time progress updates")
+    prompt_analysis: Optional[Dict[str, Any]] = Field(
+        default=None, description="Result of prompt analysis step"
+    )
+    brand_config: Optional[Dict[str, Any]] = Field(
+        default=None, description="Result of brand analysis step"
+    )
+    scenes: Optional[List[Dict[str, Any]]] = Field(
+        default=None, description="Scene decomposition output"
+    )
+    micro_prompts: Optional[List[Dict[str, Any]]] = Field(
+        default=None, description="Generated micro-prompts for each scene"
+    )
 
 
 class ClipMetadata(BaseModel):
@@ -166,6 +178,29 @@ class ProgressResponse(BaseModel):
 
     class Config:
         use_enum_values = True
+
+
+class CreateVideoFromImagesRequest(BaseModel):
+    """Request model for creating a video from a sequence of images with Ken Burns effect."""
+    image_urls: List[str] = Field(..., min_items=1, description="List of image URLs to include in the video")
+    duration: float = Field(..., ge=1.0, le=300.0, description="Target duration of the video in seconds")
+    user_id: str = Field(..., description="User ID for asset ownership")
+    width: Optional[int] = Field(None, ge=100, le=3840, description="Target video width (optional, defaults to first image width)")
+    height: Optional[int] = Field(None, ge=100, le=2160, description="Target video height (optional, defaults to first image height)")
+
+
+class CreateVideoFromImagesResponse(BaseModel):
+    """Response model for video creation request."""
+    job_id: str = Field(..., description="Job ID for tracking progress")
+    status: str = Field(default="queued", description="Initial status of the job")
+
+
+class JobStatusResponse(BaseModel):
+    """Response model for job status check."""
+    status: str = Field(..., description="Current status of the job (queued, started, finished, failed)")
+    result: Optional[Dict[str, Any]] = Field(None, description="Job result data (if finished)")
+    error: Optional[str] = Field(None, description="Error message (if failed)")
+    progress: Optional[Any] = Field(None, description="Progress information (if available)")
 
 
 # Health Check Models

@@ -1,5 +1,9 @@
 import React from 'react';
-import { Textarea } from '@/components/ad-generator/ui/Textarea';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent } from '@/components/ui/card';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Lightbulb, ChevronDown, Wand2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface PromptInputProps {
   value: string;
@@ -9,9 +13,26 @@ interface PromptInputProps {
 }
 
 const EXAMPLE_PROMPTS = [
-  'Create a dynamic 30-second ad showcasing our new eco-friendly water bottle. Start with a close-up of morning dew on leaves, transition to an active lifestyle montage (hiking, yoga, cycling), and end with the product against a natural backdrop. Emphasize sustainability and health.',
-  'Produce an upbeat advertisement for a productivity app. Begin with a chaotic desk scene, then show the app interface organizing tasks smoothly. Include testimonials from diverse users, and conclude with a clear call-to-action. Modern, professional aesthetic with vibrant colors.',
-  'Design a luxury car commercial featuring sleek cityscapes at night. Highlight the vehicle\'s elegant lines with cinematic camera movements, showcase advanced tech features through UI overlays, and emphasize premium craftsmanship. Sophisticated, aspirational tone throughout.',
+  {
+    title: 'Eco-Friendly Product',
+    prompt: 'Create a dynamic 30-second ad showcasing our new eco-friendly water bottle. Start with a close-up of morning dew on leaves, transition to an active lifestyle montage (hiking, yoga, cycling), and end with the product against a natural backdrop. Emphasize sustainability and health.',
+  },
+  {
+    title: 'Productivity App',
+    prompt: 'Produce an upbeat advertisement for a productivity app. Begin with a chaotic desk scene, then show the app interface organizing tasks smoothly. Include testimonials from diverse users, and conclude with a clear call-to-action. Modern, professional aesthetic with vibrant colors.',
+  },
+  {
+    title: 'Luxury Car',
+    prompt: "Design a luxury car commercial featuring sleek cityscapes at night. Highlight the vehicle's elegant lines with cinematic camera movements, showcase advanced tech features through UI overlays, and emphasize premium craftsmanship. Sophisticated, aspirational tone throughout.",
+  },
+];
+
+const TIPS = [
+  'Be specific about visual elements, camera angles, and transitions',
+  'Describe the mood, tone, and pacing you want',
+  'Include details about colors, lighting, and aesthetic preferences',
+  'Mention any text overlays, captions, or key messages',
+  'Specify the target audience and desired emotional impact',
 ];
 
 export const PromptInput: React.FC<PromptInputProps> = ({
@@ -20,77 +41,113 @@ export const PromptInput: React.FC<PromptInputProps> = ({
   onBlur,
   error,
 }) => {
+  const [tipsOpen, setTipsOpen] = React.useState(false);
   const charCount = value.length;
-  const isValid = charCount > 0 && charCount <= 2000;
+  const maxLength = 2000;
   const isNearMax = charCount > 1800;
 
-  const handleUseExample = (example: string) => {
-    onChange(example);
+  const handleUseExample = (prompt: string) => {
+    onChange(prompt);
   };
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-2">
-        <h2 className="text-2xl font-bold text-foreground m-0 sm:text-xl">Describe Your Video</h2>
-        <p className="text-base text-muted-foreground leading-relaxed m-0">
-          Provide a detailed description of the video you want to create. Include visual elements, transitions, messaging, and mood. The more specific you are, the better the results.
+      {/* Header */}
+      <div className="space-y-2">
+        <h2 className="text-2xl font-semibold tracking-tight text-foreground">
+          Describe Your Video
+        </h2>
+        <p className="text-muted-foreground">
+          Provide a detailed description of the video you want to create. The more specific you are, the better the results.
         </p>
       </div>
 
-      <Textarea
-        label="Video Prompt"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        onBlur={(e) => onBlur(e.target.value)}
-        error={error}
-        placeholder="Describe your video in detail (max 2000 characters)..."
-        maxLength={2000}
-        showCounter
-        fullWidth
-        rows={8}
-        helperText={
-          isNearMax
-            ? `${2000 - charCount} characters remaining`
-            : undefined
-        }
-        className="min-h-[160px] text-base sm:min-h-[140px]"
-      />
+      {/* Textarea */}
+      <div className="space-y-2">
+        <Label htmlFor="prompt" className="text-sm font-medium">
+          Video Prompt
+        </Label>
+        <div className="relative">
+          <textarea
+            id="prompt"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            onBlur={(e) => onBlur(e.target.value)}
+            placeholder="Describe your video in detail..."
+            maxLength={maxLength}
+            rows={6}
+            className={cn(
+              'flex min-h-[160px] w-full rounded-lg border bg-background px-4 py-3 text-base shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 resize-none',
+              error ? 'border-destructive focus-visible:ring-destructive' : 'border-input'
+            )}
+          />
+          <div className="absolute bottom-3 right-3 text-xs text-muted-foreground">
+            <span className={cn(isNearMax && 'text-destructive font-medium')}>
+              {charCount}
+            </span>
+            /{maxLength}
+          </div>
+        </div>
+        {error && (
+          <p className="text-sm text-destructive">{error}</p>
+        )}
+      </div>
 
-      {!isValid && charCount === 0 && (
-        <div className="flex flex-col gap-3 p-4 bg-secondary rounded-lg">
-          <h3 className="text-lg font-semibold text-foreground m-0">Example Prompts</h3>
-          <p className="text-sm text-muted-foreground m-0">
-            Not sure where to start? Try one of these examples:
-          </p>
-          <div className="flex flex-col gap-3">
+      {/* Example prompts - shown when empty */}
+      {charCount === 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+            <Wand2 className="h-4 w-4" />
+            <span>Try an example</span>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-1 md:grid-cols-3">
             {EXAMPLE_PROMPTS.map((example, index) => (
-              <button
+              <Card
                 key={index}
-                type="button"
-                onClick={() => handleUseExample(example)}
-                className="flex flex-col gap-2 p-4 bg-card border border-border rounded-md cursor-pointer text-left transition-all hover:border-primary hover:shadow-md hover:-translate-y-0.5 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 group"
+                className="cursor-pointer transition-all hover:border-primary hover:shadow-md group"
+                onClick={() => handleUseExample(example.prompt)}
               >
-                <div className="flex justify-between items-center w-full sm:flex-col sm:items-start sm:gap-2">
-                  <span className="text-sm font-medium text-primary">Example {index + 1}</span>
-                  <span className="text-sm text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 sm:opacity-100 sm:min-h-[44px]">Use this prompt →</span>
-                </div>
-                <p className="text-sm text-muted-foreground leading-relaxed m-0 sm:text-sm sm:leading-relaxed">{example}</p>
-              </button>
+                <CardContent className="p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-primary">
+                      {example.title}
+                    </span>
+                    <span className="text-xs text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
+                      Use this
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground line-clamp-3">
+                    {example.prompt}
+                  </p>
+                </CardContent>
+              </Card>
             ))}
           </div>
         </div>
       )}
 
-      <div className="p-4 bg-secondary rounded-md border-l-4 border-primary">
-        <h4 className="text-base font-semibold text-foreground m-0 mb-3">💡 Tips for effective prompts:</h4>
-        <ul className="m-0 pl-5 flex flex-col gap-2">
-          <li className="text-sm text-muted-foreground leading-relaxed">Be specific about visual elements, camera angles, and transitions</li>
-          <li className="text-sm text-muted-foreground leading-relaxed">Describe the mood, tone, and pacing you want</li>
-          <li className="text-sm text-muted-foreground leading-relaxed">Include details about colors, lighting, and aesthetic preferences</li>
-          <li className="text-sm text-muted-foreground leading-relaxed">Mention any text overlays, captions, or key messages</li>
-          <li className="text-sm text-muted-foreground leading-relaxed">Specify the target audience and desired emotional impact</li>
-        </ul>
-      </div>
+      {/* Tips collapsible */}
+      <Collapsible open={tipsOpen} onOpenChange={setTipsOpen}>
+        <CollapsibleTrigger className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors w-full">
+          <Lightbulb className="h-4 w-4" />
+          <span>Tips for effective prompts</span>
+          <ChevronDown className={cn('h-4 w-4 ml-auto transition-transform', tipsOpen && 'rotate-180')} />
+        </CollapsibleTrigger>
+        <CollapsibleContent className="pt-3">
+          <Card className="bg-muted/50">
+            <CardContent className="p-4">
+              <ul className="space-y-2">
+                {TIPS.map((tip, index) => (
+                  <li key={index} className="flex items-start gap-2 text-sm text-muted-foreground">
+                    <span className="text-primary mt-1">•</span>
+                    <span>{tip}</span>
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
+        </CollapsibleContent>
+      </Collapsible>
     </div>
   );
 };

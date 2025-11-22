@@ -116,7 +116,7 @@ export default function RootLayout() {
   }, [activeGenerationsMap, updateGenerationStatus, loadAssets, POLLING_INTERVAL_MS]);
 
   return (
-    <div className="flex h-screen bg-background text-foreground flex-col">
+    <div className="flex min-h-screen bg-background text-foreground flex-col">
       {/* Topbar */}
       <header className="h-16 bg-card border-b border-border flex items-center justify-between px-6 flex-shrink-0">
         <div className="flex items-center gap-6">
@@ -169,7 +169,7 @@ export default function RootLayout() {
       </header>
 
       {/* Page Content */}
-      <main className="flex-1 w-screen overflow-hidden bg-background">
+      <main className="flex-1 w-screen overflow-y-auto bg-background">
         <Outlet />
       </main>
     </div>

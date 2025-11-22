@@ -13,6 +13,7 @@ from workers.redis_pool import get_redis_connection
 
 from ..schemas.replicate import (
     AsyncJobResponse,
+    FluxSchnellRequest,
     Hailuo23FastRequest,
     KlingV25TurboProRequest,
     Lyria2Request,
@@ -331,6 +332,148 @@ async def generate_nano_banana(request_body: NanoBananaRequest) -> JSONResponse:
         )
 
 
+
+@router.post(
+    "/flux-schnell",
+    response_model=AsyncJobResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="Generate image with Flux Schnell model (Async)",
+    description="Start async image generation using Black Forest Labs Flux Schnell model via Replicate",
+)
+async def generate_flux_schnell(request_body: FluxSchnellRequest) -> JSONResponse:
+    """Generate image using Flux Schnell model (async).
+
+    Creates an async prediction job and returns immediately with a job ID.
+
+    Args:
+        request_body: Request containing prompt and generation parameters
+
+    Returns:
+        AsyncJobResponse: Response with job ID for tracking
+    """
+    try:
+        # Check if Replicate API key is configured
+        replicate_api_key = os.getenv("REPLICATE_API_TOKEN")
+        if not replicate_api_key:
+            logger.error("REPLICATE_API_TOKEN environment variable not set")
+            return JSONResponse(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                content={
+                    "error": "Replicate API key not configured.",
+                    "status": "error",
+                },
+            )
+
+        try:
+            import replicate
+        except ImportError as e:
+            logger.error(f"Failed to import Replicate package: {e}")
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={
+                    "error": "Replicate package not installed.",
+                    "status": "error",
+                },
+            )
+
+        logger.info(
+            "Processing Flux Schnell async request",
+            extra={
+                "prompt": request_body.prompt,
+                "aspect_ratio": request_body.aspect_ratio,
+            },
+        )
+
+        os.environ["REPLICATE_API_TOKEN"] = replicate_api_key
+
+        # Prepare input for Flux Schnell
+        model_input = {
+            "prompt": request_body.prompt,
+            "aspect_ratio": request_body.aspect_ratio,
+            "output_format": request_body.output_format,
+            "output_quality": request_body.output_quality,
+            "disable_safety_checker": request_body.disable_safety_checker,
+            "go_fast": True,
+            "megapixels": "1",
+            "num_outputs": 1,
+        }
+
+        if request_body.seed is not None:
+            model_input["seed"] = request_body.seed
+
+        # Create async prediction
+        try:
+            webhook_url = REPLICATE_WEBHOOK_URL if REPLICATE_WEBHOOK_URL else None
+
+            logger.info(
+                "Creating Replicate prediction",
+                extra={
+                    "model": "black-forest-labs/flux-schnell",
+                    "webhook_url": webhook_url,
+                    "webhook_configured": bool(webhook_url),
+                },
+            )
+
+            # Using Flux Schnell model
+            prediction = replicate.predictions.create(
+                model="black-forest-labs/flux-schnell",
+                input=model_input,
+                webhook=webhook_url,
+                webhook_events_filter=["completed"]
+            )
+
+            job_id = prediction.id
+
+            # Store job metadata
+            store_job_metadata(
+                job_id=job_id,
+                job_type="ai_generation",
+                prompt=request_body.prompt,
+                model="black-forest-labs/flux-schnell",
+                generation_type="image"
+            )
+
+            # Publish initial status
+            publish_job_update(job_id, "starting")
+
+            logger.info(
+                "Flux Schnell async job created",
+                extra={
+                    "job_id": job_id,
+                    "prompt": request_body.prompt,
+                },
+            )
+
+            return JSONResponse(
+                status_code=status.HTTP_202_ACCEPTED,
+                content={
+                    "job_id": job_id,
+                    "status": prediction.status,
+                    "message": "Image generation started"
+                },
+            )
+
+        except Exception as e:
+            logger.exception("Replicate API call failed", extra={"error": str(e)})
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={
+                    "error": f"Failed to start image generation: {str(e)}",
+                    "status": "error",
+                },
+            )
+
+    except Exception as e:
+        logger.exception("Unexpected error in Flux Schnell endpoint", extra={"error": str(e)})
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={
+                "error": f"Unexpected error: {str(e)}",
+                "status": "error",
+            },
+        )
+
+
 @router.post(
     "/wan-video-i2v",
     response_model=AsyncJobResponse,
@@ -378,40 +521,34 @@ async def generate_wan_video_i2v(request_body: WanVideoI2VRequest) -> JSONRespon
             "Processing Wan Video async request",
             extra={
                 "prompt": request_body.prompt,
-                "has_image": request_body.image is not None,
-                "has_last_image": request_body.last_image is not None,
+                "has_image": True,
+                "has_audio": request_body.audio is not None,
                 "resolution": request_body.resolution,
+                "duration": request_body.duration,
             },
         )
 
         os.environ["REPLICATE_API_TOKEN"] = replicate_api_key
 
-        # Prepare input with defaults for Wan Video 2.2 I2V Fast
+        # Prepare input for Wan Video 2.5 I2V
         model_input = {
             "prompt": request_body.prompt,
-            "num_frames": 81,  # Best results with 81 frames
+            "image": str(request_body.image),
             "resolution": request_body.resolution,
-            "frames_per_second": 16,
-            "interpolate_output": False,
-            "go_fast": True,
-            "sample_shift": 12,
-            "disable_safety_checker": False,
-            "lora_scale_transformer": 1,
-            "lora_scale_transformer_2": 1,
+            "duration": request_body.duration,
+            "negative_prompt": request_body.negative_prompt,
+            "enable_prompt_expansion": request_body.enable_prompt_expansion,
         }
 
-        # Add optional image inputs if provided
-        if request_body.image:
-            model_input["image"] = str(request_body.image)
-
-        if request_body.last_image:
-            model_input["last_image"] = str(request_body.last_image)
+        # Add optional audio input
+        if request_body.audio:
+            model_input["audio"] = str(request_body.audio)
 
         # Create async prediction
         try:
-            # Using Wan Video 2.2 I2V Fast model
+            # Using Wan Video 2.5 I2V model
             prediction = replicate.predictions.create(
-                model="wan-video/wan-2.2-i2v-fast",
+                model="wan-video/wan-2.5-i2v",
                 input=model_input,
                 webhook=REPLICATE_WEBHOOK_URL if REPLICATE_WEBHOOK_URL else None,
                 webhook_events_filter=["completed"]
@@ -424,7 +561,7 @@ async def generate_wan_video_i2v(request_body: WanVideoI2VRequest) -> JSONRespon
                 job_id=job_id,
                 job_type="ai_generation",
                 prompt=request_body.prompt,
-                model="wan-video/wan-2.2-i2v-fast",
+                model="wan-video/wan-2.5-i2v",
                 generation_type="video"
             )
 

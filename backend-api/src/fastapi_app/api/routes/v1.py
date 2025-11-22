@@ -19,10 +19,14 @@ from fastapi_app.models.schemas import (
     GenerationResponse,
     GenerationStatus,
     GenerationProgress,
-    ClipMetadata
+    ClipMetadata,
+    CreateVideoFromImagesRequest,
+    CreateVideoFromImagesResponse,
+    JobStatusResponse
 )
 from fastapi_app.core.errors import NotFoundError
 from fastapi_app.services.replicate_service import replicate_service
+from workers.job_queue import enqueue_ken_burns_video_generation, get_job_status
 
 # Set up module-level logger
 logger = logging.getLogger(__name__)
@@ -255,6 +259,16 @@ async def create_generation(
             logger.info(f"[PIPELINE] Step 3: Micro-Prompt Generation - Complete ({len(micro_prompts)} prompts)")
             logger.info(f"[MICRO_PROMPTS] Micro-prompt generation completed")
             logger.info(f"[MICRO_PROMPTS] Generated {len(micro_prompts)} micro-prompts")
+            logger.info(f"[DEBUG] Prompt analysis keys: {list(prompt_analysis.keys()) if prompt_analysis else []}")
+            logger.info(f"[DEBUG] Brand config present: {bool(brand_config)}")
+            logger.info(f"[DEBUG] Scenes generated: {len(scenes)}")
+            if scenes:
+                logger.debug(f"[DEBUG] First scene preview: {json.dumps(scenes[0], default=str)[:200]}")
+            logger.info(f"[DEBUG] Micro-prompts generated: {len(micro_prompts)}")
+            if micro_prompts:
+                first_prompt = micro_prompts[0]
+                preview_text = first_prompt.get('prompt_text') if isinstance(first_prompt, dict) else str(first_prompt)
+                logger.debug(f"[DEBUG] First micro-prompt preview: {preview_text[:200]}")
             for i, mp in enumerate(micro_prompts):
                 prompt_text = mp.get('prompt_text', mp.get('prompt', str(mp)))
                 logger.info(f"[MICRO_PROMPTS] Micro-prompt {i+1}: {prompt_text}")
@@ -279,7 +293,11 @@ async def create_generation(
         status=GenerationStatus.QUEUED,
         created_at=datetime.utcnow(),
         estimated_completion=estimated_completion,
-        websocket_url=f"/ws/generations/{generation_id}"
+        websocket_url=f"/ws/generations/{generation_id}",
+        prompt_analysis=prompt_analysis,
+        brand_config=brand_config.dict() if brand_config else None,
+        scenes=scenes,
+        micro_prompts=micro_prompts
     )
 
     # Always store basic generation metadata in in-memory store so that
@@ -320,8 +338,9 @@ async def create_generation(
     else:
         pass
 
-    # Generate video clips using the centralized function
-    if scenes and micro_prompts and len(scenes) == len(micro_prompts):
+    enable_video_generation = False  # Debug mode: return analysis payload instead of generating video
+
+    if enable_video_generation and scenes and micro_prompts and len(scenes) == len(micro_prompts):
         parallelize = generation_request.options.parallelize_generations if generation_request.options else False
         aspect_ratio = (
             str(generation_request.parameters.aspect_ratio.value)
@@ -404,11 +423,17 @@ async def create_generation(
         logger.warning(f"Video generation started: {queued_count}/{len(video_results)} clips queued (webhooks will update status when complete)")
         print(f"[OK] Video generation started: {queued_count}/{len(video_results)} clips queued")
         print(f"[INFO] Webhooks will update status when each clip completes")
+    else:
+        logger.info(f"[VIDEO_GENERATION] Skipping clip generation for {generation_id} (debug mode enabled). Returning analysis results only.")
 
     logger.info(f"[GENERATION_COMPLETE] Generation {generation_id} created successfully")
     logger.info(f"[GENERATION_COMPLETE] Status: {response.status.value}")
     logger.info(f"[GENERATION_COMPLETE] WebSocket URL: {response.websocket_url}")
     logger.info(f"[GENERATION_COMPLETE] Estimated completion: {response.estimated_completion}")
+    logger.info(f"[GENERATION_COMPLETE] Prompt analysis included: {prompt_analysis is not None}")
+    logger.info(f"[GENERATION_COMPLETE] Brand config included: {brand_config is not None}")
+    logger.info(f"[GENERATION_COMPLETE] Scenes returned: {len(scenes) if scenes else 0}")
+    logger.info(f"[GENERATION_COMPLETE] Micro-prompts returned: {len(micro_prompts) if micro_prompts else 0}")
     print(f"\n[SUCCESS] Generation {generation_id} created successfully")
     return response
 
@@ -1027,3 +1052,74 @@ async def classify_edit_intent(
     except Exception as e:
         logger.error(f"Failed to classify edit intent for generation {generation_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to classify edit request: {str(e)}")
+
+
+@api_v1_router.post("/media/create-video-from-images", response_model=CreateVideoFromImagesResponse, status_code=201)
+async def create_video_from_images(
+    request: CreateVideoFromImagesRequest,
+    req: Request
+) -> CreateVideoFromImagesResponse:
+    """
+    Create a video from a sequence of images with Ken Burns effects.
+
+    This endpoint accepts a list of image URLs and a duration, and starts a background job
+    to generate a video with panning and zooming effects.
+    """
+    logger = get_request_logger(req)
+    logger.info(f"Received request to create video from {len(request.image_urls)} images for user {request.user_id}")
+
+    try:
+        job_id = enqueue_ken_burns_video_generation(
+            image_urls=request.image_urls,
+            duration=request.duration,
+            user_id=request.user_id,
+            width=request.width,
+            height=request.height
+        )
+        
+        logger.info(f"Enqueued Ken Burns video generation job: {job_id}")
+        
+        return CreateVideoFromImagesResponse(
+            job_id=job_id,
+            status="queued"
+        )
+    except Exception as e:
+        logger.error(f"Failed to enqueue Ken Burns video generation job: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to start video generation: {str(e)}")
+
+
+@api_v1_router.get("/media/jobs/{job_id}", response_model=JobStatusResponse)
+async def get_media_job_status(
+    job_id: str,
+    req: Request
+) -> JobStatusResponse:
+    """
+    Get the status of a media processing job (e.g., Ken Burns video generation).
+    
+    Args:
+        job_id: The ID of the job to check.
+        
+    Returns:
+        JobStatusResponse: Status, result (if finished), error (if failed), and progress.
+    """
+    logger = get_request_logger(req)
+    logger.info(f"Checking status for job {job_id}")
+    
+    try:
+        status_data = get_job_status(job_id)
+        
+        if status_data["status"] == "not_found":
+            raise NotFoundError("job", job_id)
+            
+        return JobStatusResponse(
+            status=status_data["status"],
+            result=status_data.get("result"),
+            error=status_data.get("error"),
+            progress=status_data.get("progress")
+        )
+    except NotFoundError:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get job status for {job_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to check job status: {str(e)}")
+

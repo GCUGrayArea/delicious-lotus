@@ -14,6 +14,7 @@ import { History } from '../pages/ad-generator/History';
 import { GenerationProgress } from '../pages/ad-generator/GenerationProgress';
 import { VideoPreview } from '../pages/ad-generator/VideoPreview';
 import { NotFound } from '../pages/ad-generator/NotFound';
+import { PromptResults } from '../pages/ad-generator/PromptResults';
 
 /**
  * Main application routes configuration with type-safe paths
@@ -36,6 +37,7 @@ export function AppRoutes() {
           <Route path="history" element={<History />} />
           <Route path="generation/:id" element={<GenerationProgress />} />
           <Route path="preview/:id" element={<VideoPreview />} />
+          <Route path="prompt-results" element={<PromptResults />} />
           <Route path="*" element={<NotFound />} />
         </Route>
 
