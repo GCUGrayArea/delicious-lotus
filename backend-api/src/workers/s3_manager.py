@@ -502,18 +502,18 @@ class S3Manager:
         """
         try:
             conditions = []
+            fields = {"key": s3_key}
 
             # Add content type condition if specified
+            # Use starts-with so frontend can send the actual MIME type (e.g., "image/jpeg")
+            # Don't pre-populate Content-Type in fields - let frontend set the actual file's MIME type
             if content_type:
-                conditions.append(["starts-with", "$Content-Type", content_type.split("/")[0]])
+                content_type_prefix = content_type.split("/")[0]
+                conditions.append(["starts-with", "$Content-Type", content_type_prefix])
 
             # Add file size limit if specified
             if max_file_size:
                 conditions.append(["content-length-range", 1, max_file_size])
-
-            fields = {"key": s3_key}
-            if content_type:
-                fields["Content-Type"] = content_type
 
             presigned_post = self.s3_client.generate_presigned_post(
                 Bucket=self.bucket_name,

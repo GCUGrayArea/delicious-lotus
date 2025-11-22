@@ -53,6 +53,7 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY:-your_openai_api_key_here}
       REPLICATE_API_TOKEN: ${REPLICATE_API_TOKEN:-your_replicate_token_here}
       # Storage
+      S3_BUCKET_NAME: ${S3_BUCKET_NAME:-${S3_BUCKET:-ai-video-dev-bucket}}
       S3_BUCKET: ${S3_BUCKET:-ai-video-dev-bucket}
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
@@ -64,6 +65,7 @@ services:
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://localhost:3000,http://localhost:8000}
       # Webhook configuration for Replicate callbacks
       WEBHOOK_BASE_URL: ${WEBHOOK_BASE_URL}
+      REPLICATE_WEBHOOK_URL: ${REPLICATE_WEBHOOK_URL}
     ports:
       - "${BACKEND_PORT:-8000}:8000"
     depends_on:
@@ -97,6 +99,7 @@ services:
       DEBUG: ${FFMPEG_DEBUG:-true}
       LOG_LEVEL: ${FFMPEG_LOG_LEVEL:-INFO}
       # S3 Storage (optional - can be overridden via .env)
+      S3_BUCKET_NAME: ${S3_BUCKET_NAME:-${S3_BUCKET:-ai-video-dev-bucket}}
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
       S3_BUCKET: ${S3_BUCKET:-ai-video-dev-bucket}
@@ -139,6 +142,7 @@ services:
       # Application settings
       ENVIRONMENT: ${FFMPEG_ENVIRONMENT:-development}
       # S3 Storage (optional - can be overridden via .env)
+      S3_BUCKET_NAME: ${S3_BUCKET_NAME:-${S3_BUCKET:-ai-video-dev-bucket}}
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
       S3_BUCKET: ${S3_BUCKET:-ai-video-dev-bucket}
