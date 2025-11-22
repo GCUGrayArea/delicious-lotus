@@ -504,12 +504,12 @@ class S3Manager:
             conditions = []
             fields = {"key": s3_key}
 
-            # Add content type condition if specified
-            # Use starts-with so frontend can send the actual MIME type (e.g., "image/jpeg")
-            # Don't pre-populate Content-Type in fields - let frontend set the actual file's MIME type
-            if content_type:
-                content_type_prefix = content_type.split("/")[0]
-                conditions.append(["starts-with", "$Content-Type", content_type_prefix])
+            # NOTE: Temporarily disabled Content-Type validation to fix upload issues
+            # S3 presigned POST requires exact field matching, which is causing 403 errors
+            # TODO: Implement proper Content-Type validation that works with presigned POSTs
+            # if content_type:
+            #     content_type_prefix = content_type.split("/")[0]
+            #     conditions.append(["starts-with", "$Content-Type", content_type_prefix])
 
             # Add file size limit if specified
             if max_file_size:
