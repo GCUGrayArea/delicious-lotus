@@ -28,6 +28,7 @@ from fastapi_app.core.errors import NotFoundError
 from fastapi_app.services.replicate_service import replicate_service
 from workers.job_queue import enqueue_ken_burns_video_generation, get_job_status
 
+from fastapi_app.services.generation_pipeline import generation_pipeline
 # Set up module-level logger
 logger = logging.getLogger(__name__)
 
@@ -157,335 +158,140 @@ async def create_generation(
     """
     logger = get_request_logger(request)
     try:
-    logger.info(f"[GENERATION_START] Creating new generation")
-    logger.info(f"[GENERATION_START] Prompt: {generation_request.prompt[:100]}{'...' if len(generation_request.prompt) > 100 else ''}")
-    logger.info(f"[GENERATION_START] Parameters: duration={generation_request.parameters.duration_seconds}s, aspect_ratio={generation_request.parameters.aspect_ratio}")
-    logger.info(f"[GENERATION_START] Options: parallelize={generation_request.options.parallelize_generations if generation_request.options else False}")
-    print(f"\n[START] Processing prompt: {generation_request.prompt[:100]}{'...' if len(generation_request.prompt) > 100 else ''}")
+        logger.info(f"[GENERATION_START] Creating new generation")
+        
+        # 1. Generate unique ID
+        generation_id = f"gen_{uuid.uuid4().hex[:16]}"
+        logger.info(f"[GENERATION_ID] Generated ID: {generation_id}")
 
-    # Generate unique ID for the generation (needed for micro-prompt generation)
-    generation_id = f"gen_{uuid.uuid4().hex[:16]}"
-        print(f"[INFO] Generation ID generated: {generation_id}") # Print to stdout to verify flow
-    logger.info(f"[GENERATION_ID] Generated ID: {generation_id}")
-    print(f"[INFO] Generation ID: {generation_id}")
+        # 2. Analyze and Prepare (via Pipeline)
+        # This handles prompt analysis, brand, scenes, micro-prompts
+        logger.info(f"[PIPELINE] delegating analysis to generation_pipeline")
+        pipeline_results = await generation_pipeline.analyze_and_prepare(generation_request, generation_id)
+        
+        prompt_analysis = pipeline_results.get("prompt_analysis")
+        brand_config = pipeline_results.get("brand_config")
+        scenes = pipeline_results.get("scenes")
+        micro_prompts = pipeline_results.get("micro_prompts")
 
-    # PR 101: Analyze the prompt for consistency
-    prompt_analysis = None
-    brand_config = None
-    scenes = None
-    micro_prompts = None
+        # 3. Calculate completion time
+        duration_seconds = generation_request.parameters.duration_seconds
+        base_processing_time = 60
+        estimated_completion = datetime.utcnow() + timedelta(seconds=base_processing_time)
 
-    if AI_SERVICES_AVAILABLE:
-        try:
-            print("\n[STEP 1] Analyzing prompt...")
-            logger.info(f"[PIPELINE] Step 1: Prompt Analysis - Start")
-                
-            # Use real OpenAI API key from environment
-            from fastapi_app.core.config import settings
-                
-                # --- LOGGING UPDATE ---
-                logger.info(f"[CONFIG CHECK] OpenAI API Key present: {bool(settings.openai_api_key)}")
-                if settings.openai_api_key:
-                     logger.info(f"[CONFIG CHECK] OpenAI API Key length: {len(settings.openai_api_key)}")
-                     logger.info(f"[CONFIG CHECK] OpenAI API Key prefix: {settings.openai_api_key[:7]}...")
-                else:
-                     logger.error("[CONFIG CHECK] OpenAI API Key is MISSING or EMPTY")
-
-                logger.info(f"[CONFIG CHECK] Replicate API Token present: {bool(settings.replicate_api_token)}")
-                if settings.replicate_api_token:
-                     logger.info(f"[CONFIG CHECK] Replicate API Token length: {len(settings.replicate_api_token)}")
-                     logger.info(f"[CONFIG CHECK] Replicate API Token prefix: {settings.replicate_api_token[:7]}...")
-                else:
-                     logger.error("[CONFIG CHECK] Replicate API Token is MISSING or EMPTY")
-                # ----------------------
-
-            if not settings.openai_api_key:
-                    logger.warning("OpenAI API key not configured - skipping analysis")
-                    raise HTTPException(
-                        status_code=503, 
-                        detail="AI Video Generation is currently unavailable due to missing server configuration (OpenAI API Key). Please contact the administrator."
-                    )
-
-            analysis_service = PromptAnalysisService(openai_api_key=settings.openai_api_key, use_mock=False)
-            analysis_request = AnalysisRequest(prompt=generation_request.prompt)
-                logger.info(f"[PIPELINE] calling analyze_prompt with prompt length: {len(generation_request.prompt)}")
-            analysis_response = await analysis_service.analyze_prompt(analysis_request)
-            prompt_analysis = analysis_response.analysis.dict()
-            confidence = prompt_analysis.get('confidence_score', 0)
-            logger.info(f"[PIPELINE] Step 1: Prompt Analysis - Complete (confidence: {confidence:.2f})")
-            logger.debug(f"[PIPELINE] Analysis Result: {json.dumps(prompt_analysis, default=str)}")
-            print(f"[OK] Prompt analysis complete (confidence: {confidence:.2f})")
-
-            # PR 102: Analyze brand configuration if available
-            if generation_request.parameters.brand:
-                logger.info(f"[PIPELINE] Step 1b: Brand Analysis - Start")
-                brand_service = BrandAnalysisService(openai_api_key=settings.openai_api_key, use_mock=False)
-                brand_config = await brand_service.analyze_brand(
-                    analysis_response.analysis,
-                    generation_request.parameters.brand
-                )
-                logger.info(f"[PIPELINE] Step 1b: Brand Analysis - Complete (Brand: {brand_config.name})")
-            elif prompt_analysis.get('product_focus'):
-                # Even if no explicit brand config, check if prompt contains brand info
-                logger.info(f"[PIPELINE] Step 1b: Implicit Brand Analysis - Start")
-                brand_service = BrandAnalysisService(openai_api_key=settings.openai_api_key, use_mock=False)
-                brand_config = await brand_service.analyze_brand(analysis_response.analysis)
-                if brand_config.name == "Corporate Brand":
-                    brand_config = None
-                logger.info(f"[PIPELINE] Step 1b: Implicit Brand Analysis - Complete (Brand: {brand_config.name if brand_config else 'None'})")
-            else:
-                pass
-
-            # PR 301: Generate micro-prompts from scenes (PR 103 scene decomposition is conceptually complete)
-            print("\n[STEP 2] Decomposing into scenes...")
-            logger.info(f"[PIPELINE] Step 2: Scene Decomposition - Start")
-            from ai.models.scene_decomposition import decompose_video_scenes
-
-            # Decompose video into scenes using PR 103 logic
-            scene_request = SceneDecompositionRequest(
-                video_type="ad",  # MVP focus on ads
-                total_duration=generation_request.parameters.duration_seconds,
-                prompt_analysis=prompt_analysis,
-                brand_config=brand_config.dict() if brand_config else None
-            )
-                logger.info(f"[PIPELINE] calling decompose_video_scenes...")
-            scene_response = decompose_video_scenes(scene_request)
-            scenes = [scene.dict() for scene in scene_response.scenes]
-            logger.info(f"[PIPELINE] Step 2: Scene Decomposition - Complete ({len(scenes)} scenes)")
-            for i, s in enumerate(scenes):
-                logger.debug(f"[PIPELINE] Scene {i+1}: {s.get('description', '')[:50]}...")
-            print(f"[OK] Generated {len(scenes)} scenes")
-
-            # Build micro-prompts for each scene
-            brand_style_vector = None
-            if brand_config:
-                # Create a basic style vector from brand analysis (simplified for MVP)
-                from ai.models.brand_style_vector import create_default_style_vector
-                brand_style_vector = create_default_style_vector("good_brand_adaptation")
-                brand_style_vector.brand_name = brand_config.name
-                brand_style_vector.content_description = generation_request.prompt[:100]
-
-            micro_prompt_request = MicroPromptRequest(
-                generation_id=generation_id,
-                scenes=scenes,
-                prompt_analysis=prompt_analysis,
-                brand_config=brand_config.dict() if brand_config else None,
-                brand_style_vector=brand_style_vector.dict() if brand_style_vector else None
-            )
-
-            print("\n[STEP 3] Building micro-prompts...")
-            logger.info(f"[PIPELINE] Step 3: Micro-Prompt Generation - Start")
-            logger.info(f"[MICRO_PROMPTS] Starting micro-prompt generation for generation {generation_id}")
-            logger.info(f"[MICRO_PROMPTS] Number of scenes: {len(scenes)}")
-            logger.info(f"[MICRO_PROMPTS] Prompt analysis key_elements: {prompt_analysis.get('key_elements', [])}")
-            logger.info(f"[MICRO_PROMPTS] Brand config: {brand_config.dict() if brand_config else 'None'}")
-            prompt_builder = MicroPromptBuilderService()
-            logger.info(f"[MICRO_PROMPTS] Calling build_micro_prompts...")
-            micro_prompt_response = await prompt_builder.build_micro_prompts(micro_prompt_request)
-            micro_prompts = [mp.dict() for mp in micro_prompt_response.micro_prompts]
-            logger.info(f"[PIPELINE] Step 3: Micro-Prompt Generation - Complete ({len(micro_prompts)} prompts)")
-            logger.info(f"[MICRO_PROMPTS] Micro-prompt generation completed")
-            logger.info(f"[MICRO_PROMPTS] Generated {len(micro_prompts)} micro-prompts")
-            logger.info(f"[DEBUG] Prompt analysis keys: {list(prompt_analysis.keys()) if prompt_analysis else []}")
-            logger.info(f"[DEBUG] Brand config present: {bool(brand_config)}")
-            logger.info(f"[DEBUG] Scenes generated: {len(scenes)}")
-            if scenes:
-                logger.debug(f"[DEBUG] First scene preview: {json.dumps(scenes[0], default=str)[:200]}")
-            logger.info(f"[DEBUG] Micro-prompts generated: {len(micro_prompts)}")
-            if micro_prompts:
-                first_prompt = micro_prompts[0]
-                preview_text = first_prompt.get('prompt_text') if isinstance(first_prompt, dict) else str(first_prompt)
-                logger.debug(f"[DEBUG] First micro-prompt preview: {preview_text[:200]}")
-            for i, mp in enumerate(micro_prompts):
-                prompt_text = mp.get('prompt_text', mp.get('prompt', str(mp)))
-                logger.info(f"[MICRO_PROMPTS] Micro-prompt {i+1}: {prompt_text}")
-                logger.info(f"[MICRO_PROMPTS] Micro-prompt {i+1} source elements: {len(mp.get('source_elements', []))} elements")
-            print(f"[OK] Generated {len(micro_prompts)} micro-prompts")
-
-            except HTTPException:
-                raise
-        except Exception as e:
-                logger.error(f"[PIPELINE] AI Service Error: {str(e)}", exc_info=True)
-                # Include traceback in detail for debugging
-                import traceback
-                tb = traceback.format_exc()
-                logger.error(f"[PIPELINE] Traceback: {tb}")
-                raise HTTPException(status_code=500, detail=f"AI processing failed: {str(e)}. Check logs for traceback.")
-    else:
-        logger.warning("AI services not available, proceeding without analysis")
-
-    # Calculate estimated completion time (placeholder logic)
-    duration_seconds = generation_request.parameters.duration_seconds
-    base_processing_time = 60  # Base processing time in seconds
-    estimated_completion = datetime.utcnow() + timedelta(seconds=base_processing_time)
-
-    # Create response
-    response = CreateGenerationResponse(
-        generation_id=generation_id,
-        status=GenerationStatus.QUEUED,
-        created_at=datetime.utcnow(),
-        estimated_completion=estimated_completion,
-        websocket_url=f"/ws/generations/{generation_id}",
-        prompt_analysis=prompt_analysis,
-        brand_config=brand_config.dict() if brand_config else None,
-        scenes=scenes,
-        micro_prompts=micro_prompts
-    )
-
-    # Always store basic generation metadata in in-memory store so that
-    # GET /api/v1/generations/{id} can return a record even if database
-    # or clip storage are unavailable.
-    _generation_store[generation_id] = {
-        "id": generation_id,
-        "status": GenerationStatus.QUEUED,
-        "request": generation_request.dict(),
-        "prompt_analysis": prompt_analysis,
-        "brand_config": brand_config.dict() if brand_config else None,
-        "scenes": scenes,
-        "micro_prompts": micro_prompts,
-        "created_at": response.created_at,
-        "updated_at": response.created_at,
-        "progress": None,
-    }
-
-    # Store generation metadata in database
-    if generation_storage_service:
-        try:
-            generation_storage_service.create_generation(
-                generation_id=generation_id,
-                prompt=generation_request.prompt,
-                status=GenerationStatus.QUEUED.value,
-                metadata={
-                    "prompt_analysis": prompt_analysis,
-                    "brand_config": brand_config.dict() if brand_config else None,
-                    "scenes": scenes,
-                    "micro_prompts": micro_prompts,
-                    "parameters": generation_request.parameters.dict(),
-                    "options": generation_request.options.dict() if generation_request.options else None
-                },
-                duration_seconds=generation_request.parameters.duration_seconds
-            )
-        except Exception as e:
-            logger.error(f"[DATABASE] Failed to store generation {generation_id} in database: {str(e)}", exc_info=True)
-    else:
-        pass
-
-        enable_video_generation = True  # Enabled for production
-
-    if enable_video_generation and scenes and micro_prompts and len(scenes) == len(micro_prompts):
-        parallelize = generation_request.options.parallelize_generations if generation_request.options else False
-        aspect_ratio = (
-            str(generation_request.parameters.aspect_ratio.value)
-            if hasattr(generation_request.parameters.aspect_ratio, "value")
-            else str(generation_request.parameters.aspect_ratio)
+        # 4. Create Response Object
+        response = CreateGenerationResponse(
+            generation_id=generation_id,
+            status=GenerationStatus.QUEUED,
+            created_at=datetime.utcnow(),
+            estimated_completion=estimated_completion,
+            websocket_url=f"/ws/generations/{generation_id}",
+            prompt_analysis=prompt_analysis,
+            brand_config=brand_config.dict() if brand_config and hasattr(brand_config, 'dict') else brand_config,
+            scenes=scenes,
+            micro_prompts=micro_prompts
         )
 
-        print(f"\n[STEP 4] Generating videos...")
-        logger.warning(f"[VIDEO_GENERATION] Starting video generation for {len(micro_prompts)} clips")
-        logger.warning(f"[VIDEO_GENERATION] Configuration: parallelize={parallelize}, aspect_ratio={aspect_ratio}")
-        print(f"[INFO] Generating {len(micro_prompts)} clips (parallelize={parallelize}, aspect_ratio={aspect_ratio})")
+        # 5. Store Metadata (Memory & DB)
+        # Store generation metadata in in-memory store
+        _generation_store[generation_id] = {
+            "id": generation_id,
+            "status": GenerationStatus.QUEUED,
+            "request": generation_request.dict(),
+            "prompt_analysis": prompt_analysis,
+            "brand_config": brand_config.dict() if brand_config and hasattr(brand_config, 'dict') else brand_config,
+            "scenes": scenes,
+            "micro_prompts": micro_prompts,
+            "created_at": response.created_at,
+            "updated_at": response.created_at,
+            "progress": None,
+        }
 
-        # Extract prompt_text from micro_prompts (they're dicts with 'prompt_text' field)
-        micro_prompt_texts: list[str] = []
-        for mp in micro_prompts:
-            if isinstance(mp, dict):
-                prompt_text = mp.get("prompt_text", "")
-                if not prompt_text:
-                    prompt_text = mp.get("prompt", "") or str(mp)
-                micro_prompt_texts.append(prompt_text)
-            else:
-                micro_prompt_texts.append(getattr(mp, "prompt_text", str(mp)))
-
-        webhook_base_url = settings.webhook_base_url or os.getenv("WEBHOOK_BASE_URL")
-        if not webhook_base_url:
-            try:
-                webhook_base_url = f"{request.url.scheme}://{request.url.hostname}"
-                if request.url.port and request.url.port not in [80, 443]:
-                    webhook_base_url += f":{request.url.port}"
-            except Exception:
-                logger.warning("Could not determine webhook base URL - webhooks will not work")
-                webhook_base_url = None
-        
-        if webhook_base_url and ("localhost" in webhook_base_url or "127.0.0.1" in webhook_base_url):
-            logger.warning(f"Webhook URL is local ({webhook_base_url}). Replicate callbacks will FAIL. Video generation status will not update automatically unless you use a tunnel (e.g. ngrok).")
-            # We still send it, as some local dev setups might strictly need it, but it likely won't work.
-
-        try:
-            logger.info(f"[VIDEO_GENERATION] Calling ReplicateService directly")
-            video_results = await replicate_service.generate_video_clips(
-                scenes=scenes,
-                micro_prompts=micro_prompt_texts,
-                generation_id=generation_id,
-                aspect_ratio=aspect_ratio,
-                parallelize=parallelize,
-                webhook_base_url=webhook_base_url
-            )
-                if not video_results and not replicate_service.api_token:
-                     raise HTTPException(status_code=503, detail="Video generation unavailable: Replicate API token not configured")
-                     
-            except HTTPException:
-                raise
-        except Exception as e:
-            logger.error(f"[VIDEO_GENERATION] Service call failed: {e}")
-            video_results = []
-
-        # Store initial video results (all will be "queued" status with webhooks)
-        # Webhook handler will update status to "completed" when each clip finishes
-        queued_count = len([r for r in video_results if r.get('status') == 'queued'])
-        failed_count = len([r for r in video_results if r.get('status') == 'failed'])
-        
-        # Determine initial status
-        initial_status = GenerationStatus.PROCESSING
-        if video_results and failed_count == len(video_results):
-            initial_status = GenerationStatus.FAILED
-            logger.error(f"[VIDEO_GENERATION] All {len(video_results)} clips failed to start")
-        
+        # Store generation metadata in database
         if generation_storage_service:
             try:
-                # Update status
-                generation_storage_service.update_generation(
+                generation_storage_service.create_generation(
                     generation_id=generation_id,
-                    status=initial_status.value,
-                    metadata={"video_results": video_results}
+                    prompt=generation_request.prompt,
+                    status=GenerationStatus.QUEUED.value,
+                    metadata={
+                        "prompt_analysis": prompt_analysis,
+                        "brand_config": brand_config.dict() if brand_config and hasattr(brand_config, 'dict') else brand_config,
+                        "scenes": scenes,
+                        "micro_prompts": micro_prompts,
+                        "parameters": generation_request.parameters.dict(),
+                        "options": generation_request.options.dict() if generation_request.options else None
+                    },
+                    duration_seconds=generation_request.parameters.duration_seconds
                 )
-                logger.warning(f"Updated generation {generation_id} status to {initial_status.value} ({queued_count} clips queued)")
             except Exception as e:
-                logger.error(f"Failed to update generation status in database: {str(e)}")
+                logger.error(f"[DATABASE] Failed to store generation {generation_id} in database: {str(e)}", exc_info=True)
 
-        # Also update in-memory store (fallback)
-        if generation_id in _generation_store:
-            _generation_store[generation_id]["video_results"] = video_results
-            _generation_store[generation_id]["status"] = initial_status
+        # 6. Video Generation (via Pipeline)
+        enable_video_generation = True  # Enabled for production
+        
+        if enable_video_generation:
+            # Determine webhook URL
+            webhook_base_url = settings.webhook_base_url or os.getenv("WEBHOOK_BASE_URL")
+            if not webhook_base_url:
+                 try:
+                     webhook_base_url = f"{request.url.scheme}://{request.url.hostname}"
+                     if request.url.port and request.url.port not in [80, 443]:
+                         webhook_base_url += f":{request.url.port}"
+                 except Exception:
+                     logger.warning("Could not determine webhook base URL - webhooks will not work")
+                     webhook_base_url = None
 
-        logger.warning(f"Video generation started: {queued_count}/{len(video_results)} clips queued (webhooks will update status when complete)")
-        print(f"[OK] Video generation started: {queued_count}/{len(video_results)} clips queued")
-        print(f"[INFO] Webhooks will update status when each clip completes")
-    else:
-        logger.info(f"[VIDEO_GENERATION] Skipping clip generation for {generation_id} (debug mode enabled). Returning analysis results only.")
+            if webhook_base_url and ("localhost" in webhook_base_url or "127.0.0.1" in webhook_base_url):
+                logger.warning(f"Webhook URL is local ({webhook_base_url}). Replicate callbacks may fail.")
 
-    logger.info(f"[GENERATION_COMPLETE] Generation {generation_id} created successfully")
-    logger.info(f"[GENERATION_COMPLETE] Status: {response.status.value}")
-    logger.info(f"[GENERATION_COMPLETE] WebSocket URL: {response.websocket_url}")
-    logger.info(f"[GENERATION_COMPLETE] Estimated completion: {response.estimated_completion}")
-    logger.info(f"[GENERATION_COMPLETE] Prompt analysis included: {prompt_analysis is not None}")
-    logger.info(f"[GENERATION_COMPLETE] Brand config included: {brand_config is not None}")
-    logger.info(f"[GENERATION_COMPLETE] Scenes returned: {len(scenes) if scenes else 0}")
-    logger.info(f"[GENERATION_COMPLETE] Micro-prompts returned: {len(micro_prompts) if micro_prompts else 0}")
-    print(f"\n[SUCCESS] Generation {generation_id} created successfully")
-    return response
+            video_results = await generation_pipeline.generate_videos(
+                generation_id=generation_id,
+                scenes=scenes,
+                micro_prompts=micro_prompts,
+                generation_request=generation_request,
+                webhook_base_url=webhook_base_url
+            )
+
+            # Update status based on results
+            queued_count = len([r for r in video_results if r.get('status') == 'queued'])
+            failed_count = len([r for r in video_results if r.get('status') == 'failed'])
+            
+            initial_status = GenerationStatus.PROCESSING
+            if video_results and failed_count == len(video_results):
+                initial_status = GenerationStatus.FAILED
+                logger.error(f"[VIDEO_GENERATION] All {len(video_results)} clips failed to start")
+
+            # Update DB
+            if generation_storage_service:
+                try:
+                    generation_storage_service.update_generation(
+                        generation_id=generation_id,
+                        status=initial_status.value,
+                        metadata={"video_results": video_results}
+                    )
+                except Exception as e:
+                    logger.error(f"Failed to update generation status in database: {str(e)}")
+
+            # Update Memory
+            if generation_id in _generation_store:
+                _generation_store[generation_id]["video_results"] = video_results
+                _generation_store[generation_id]["status"] = initial_status
+
+            logger.info(f"[VIDEO_GENERATION] Started: {queued_count}/{len(video_results)} clips queued")
+        
+        logger.info(f"[GENERATION_COMPLETE] Generation {generation_id} created successfully")
+        return response
 
     except HTTPException:
-        # Re-raise HTTP exceptions as-is
         raise
     except Exception as e:
-        # Catch ALL other exceptions
         import traceback
         tb = traceback.format_exc()
         logger.error(f"[CRITICAL_FAILURE] Unhandled exception in create_generation: {str(e)}")
         logger.error(f"[CRITICAL_FAILURE] Traceback: {tb}")
-        print(f"[ERROR] Unhandled exception: {str(e)}")
-        print(tb)
         raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
+
 
 
 @api_v1_router.get("/generations", status_code=200)
