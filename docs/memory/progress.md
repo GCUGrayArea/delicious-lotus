@@ -51,6 +51,7 @@
 - None currently.
 
 ### Resolved
+- ✅ **Replicate 500 Error** (2025-11-22) - Fixed `ReplicateError` by conditionally passing `webhook_events_filter` only when webhook is configured.
 - ✅ **Replicate 401 Unauthorized** (2025-11-22) - Fixed by removing stale keys from `terraform.tfvars` and forcing usage of correct keys from `.env`.
 - ✅ **OpenAI 500 Error** (2025-11-22) - Fixed by passing `OPENAI_API_KEY` to ECS container via Terraform and `deploy.sh`.
 - ✅ **500 Error on Generation** (2025-11-22) - Fixed by implementing explicit 503 error for missing keys (instead of silent fallback) and re-enabling video generation.

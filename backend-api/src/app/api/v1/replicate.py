@@ -263,12 +263,17 @@ async def generate_nano_banana(request_body: NanoBananaRequest) -> JSONResponse:
 
         # Create async prediction with webhook
         try:
-            prediction = replicate.predictions.create(
-                model="google/nano-banana",
-                input=model_input,
-                webhook=REPLICATE_WEBHOOK_URL if REPLICATE_WEBHOOK_URL else None,
-                webhook_events_filter=["completed"]
-            )
+            webhook_url = REPLICATE_WEBHOOK_URL if REPLICATE_WEBHOOK_URL else None
+            prediction_args = {
+                "model": "google/nano-banana",
+                "input": model_input,
+            }
+            
+            if webhook_url:
+                prediction_args["webhook"] = webhook_url
+                prediction_args["webhook_events_filter"] = ["completed"]
+
+            prediction = replicate.predictions.create(**prediction_args)
 
             job_id = prediction.id
 
@@ -415,12 +420,16 @@ async def generate_flux_schnell(request_body: FluxSchnellRequest) -> JSONRespons
             )
 
             # Using Flux Schnell model
-            prediction = replicate.predictions.create(
-                model="black-forest-labs/flux-schnell",
-                input=model_input,
-                webhook=webhook_url,
-                webhook_events_filter=["completed"]
-            )
+            prediction_args = {
+                "model": "black-forest-labs/flux-schnell",
+                "input": model_input,
+            }
+
+            if webhook_url:
+                prediction_args["webhook"] = webhook_url
+                prediction_args["webhook_events_filter"] = ["completed"]
+
+            prediction = replicate.predictions.create(**prediction_args)
 
             job_id = prediction.id
 
@@ -547,12 +556,17 @@ async def generate_wan_video_i2v(request_body: WanVideoI2VRequest) -> JSONRespon
         # Create async prediction
         try:
             # Using Wan Video 2.5 I2V model
-            prediction = replicate.predictions.create(
-                model="wan-video/wan-2.5-i2v",
-                input=model_input,
-                webhook=REPLICATE_WEBHOOK_URL if REPLICATE_WEBHOOK_URL else None,
-                webhook_events_filter=["completed"]
-            )
+            webhook_url = REPLICATE_WEBHOOK_URL if REPLICATE_WEBHOOK_URL else None
+            prediction_args = {
+                "model": "wan-video/wan-2.5-i2v",
+                "input": model_input,
+            }
+            
+            if webhook_url:
+                prediction_args["webhook"] = webhook_url
+                prediction_args["webhook_events_filter"] = ["completed"]
+
+            prediction = replicate.predictions.create(**prediction_args)
 
             job_id = prediction.id
 
@@ -684,12 +698,16 @@ async def generate_wan_video_t2v(request_body: WanVideoT2VRequest) -> JSONRespon
             )
 
             # Using Wan Video 2.5 T2V model
-            prediction = replicate.predictions.create(
-                model="wan-video/wan-2.5-t2v",
-                input=model_input,
-                webhook=webhook_url,
-                webhook_events_filter=["completed"]
-            )
+            prediction_args = {
+                "model": "wan-video/wan-2.5-t2v",
+                "input": model_input,
+            }
+            
+            if webhook_url:
+                prediction_args["webhook"] = webhook_url
+                prediction_args["webhook_events_filter"] = ["completed"]
+
+            prediction = replicate.predictions.create(**prediction_args)
 
             job_id = prediction.id
 
@@ -842,12 +860,16 @@ async def generate_seedance_1_pro_fast(request_body: Seedance1ProFastRequest) ->
             )
 
             # Using Seedance-1-Pro-Fast model
-            prediction = replicate.predictions.create(
-                model="bytedance/seedance-1-pro-fast",
-                input=model_input,
-                webhook=webhook_url,
-                webhook_events_filter=["completed"]
-            )
+            prediction_args = {
+                "model": "bytedance/seedance-1-pro-fast",
+                "input": model_input,
+            }
+
+            if webhook_url:
+                prediction_args["webhook"] = webhook_url
+                prediction_args["webhook_events_filter"] = ["completed"]
+
+            prediction = replicate.predictions.create(**prediction_args)
 
             job_id = prediction.id
 
@@ -1006,12 +1028,16 @@ async def generate_veo_31_fast(request_body: Veo31FastRequest) -> JSONResponse:
             )
 
             # Using Google Veo 3.1 Fast model
-            prediction = replicate.predictions.create(
-                model="google/veo-3.1-fast",
-                input=model_input,
-                webhook=webhook_url,
-                webhook_events_filter=["completed"]
-            )
+            prediction_args = {
+                "model": "google/veo-3.1-fast",
+                "input": model_input,
+            }
+
+            if webhook_url:
+                prediction_args["webhook"] = webhook_url
+                prediction_args["webhook_events_filter"] = ["completed"]
+
+            prediction = replicate.predictions.create(**prediction_args)
 
             job_id = prediction.id
 
@@ -1155,12 +1181,16 @@ async def generate_hailuo_23_fast(request_body: Hailuo23FastRequest) -> JSONResp
             )
 
             # Using MiniMax Hailuo 2.3 Fast model
-            prediction = replicate.predictions.create(
-                model="minimax/hailuo-2.3-fast",
-                input=model_input,
-                webhook=webhook_url,
-                webhook_events_filter=["completed"]
-            )
+            prediction_args = {
+                "model": "minimax/hailuo-2.3-fast",
+                "input": model_input,
+            }
+
+            if webhook_url:
+                prediction_args["webhook"] = webhook_url
+                prediction_args["webhook_events_filter"] = ["completed"]
+
+            prediction = replicate.predictions.create(**prediction_args)
 
             job_id = prediction.id
 
@@ -1307,12 +1337,16 @@ async def generate_kling_v25_turbo_pro(request_body: KlingV25TurboProRequest) ->
             )
 
             # Using Kling v2.5 Turbo Pro model
-            prediction = replicate.predictions.create(
-                model="kwaivgi/kling-v2.5-turbo-pro",
-                input=model_input,
-                webhook=webhook_url,
-                webhook_events_filter=["completed"]
-            )
+            prediction_args = {
+                "model": "kwaivgi/kling-v2.5-turbo-pro",
+                "input": model_input,
+            }
+
+            if webhook_url:
+                prediction_args["webhook"] = webhook_url
+                prediction_args["webhook_events_filter"] = ["completed"]
+
+            prediction = replicate.predictions.create(**prediction_args)
 
             job_id = prediction.id
 
@@ -1458,12 +1492,16 @@ async def generate_lyria_2(request_body: Lyria2Request) -> JSONResponse:
                 },
             )
 
-            prediction = replicate.predictions.create(
-                model="google/lyria-2",
-                input=model_input,
-                webhook=webhook_url,
-                webhook_events_filter=["completed"]
-            )
+            prediction_args = {
+                "model": "google/lyria-2",
+                "input": model_input,
+            }
+
+            if webhook_url:
+                prediction_args["webhook"] = webhook_url
+                prediction_args["webhook_events_filter"] = ["completed"]
+
+            prediction = replicate.predictions.create(**prediction_args)
 
             job_id = prediction.id
 
@@ -1614,12 +1652,16 @@ async def generate_music_01(request_body: Music01Request) -> JSONResponse:
                 },
             )
 
-            prediction = replicate.predictions.create(
-                model="minimax/music-01",
-                input=model_input,
-                webhook=webhook_url,
-                webhook_events_filter=["completed"]
-            )
+            prediction_args = {
+                "model": "minimax/music-01",
+                "input": model_input,
+            }
+
+            if webhook_url:
+                prediction_args["webhook"] = webhook_url
+                prediction_args["webhook_events_filter"] = ["completed"]
+
+            prediction = replicate.predictions.create(**prediction_args)
 
             job_id = prediction.id
 
@@ -1758,12 +1800,16 @@ async def generate_stable_audio_25(request_body: StableAudio25Request) -> JSONRe
                 },
             )
 
-            prediction = replicate.predictions.create(
-                model="stability-ai/stable-audio-2.5",
-                input=model_input,
-                webhook=webhook_url,
-                webhook_events_filter=["completed"]
-            )
+            prediction_args = {
+                "model": "stability-ai/stable-audio-2.5",
+                "input": model_input,
+            }
+
+            if webhook_url:
+                prediction_args["webhook"] = webhook_url
+                prediction_args["webhook_events_filter"] = ["completed"]
+
+            prediction = replicate.predictions.create(**prediction_args)
 
             job_id = prediction.id
 
@@ -2052,10 +2098,9 @@ async def generate_video_clips(
             
             # Run blocking Replicate call in thread pool
             # Using Wan Video 2.5 T2V model as default
-            prediction = await asyncio.to_thread(
-                replicate.predictions.create,
-                model="wan-video/wan-2.5-t2v",
-                input={
+            prediction_args = {
+                "model": "wan-video/wan-2.5-t2v",
+                "input": {
                     "prompt": prompt,
                     "aspect_ratio": aspect_ratio,
                     # Default parameters from generate_wan_video_t2v
@@ -2063,9 +2108,16 @@ async def generate_video_clips(
                     "duration": 5,
                     "negative_prompt": "",
                     "enable_prompt_expansion": True
-                },
-                webhook=webhook_url,
-                webhook_events_filter=["completed"]
+                }
+            }
+            
+            if webhook_url:
+                prediction_args["webhook"] = webhook_url
+                prediction_args["webhook_events_filter"] = ["completed"]
+
+            prediction = await asyncio.to_thread(
+                replicate.predictions.create,
+                **prediction_args
             )
 
             # Store metadata for tracking

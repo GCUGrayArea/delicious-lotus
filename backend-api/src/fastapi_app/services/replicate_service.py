@@ -61,20 +61,28 @@ class ReplicateService:
                 # Wan Video 2.5 T2V parameters
                 size = "1280*720" if aspect_ratio == "16:9" else "720*1280"
                 
-                # Run blocking call in thread
-                prediction = await asyncio.to_thread(
-                    replicate.predictions.create,
-                    model="wan-video/wan-2.5-t2v",
-                    input={
+                # Prepare arguments
+                prediction_args = {
+                    "model": "wan-video/wan-2.5-t2v",
+                    "input": {
                         "prompt": prompt,
                         "aspect_ratio": aspect_ratio,
                         "size": size,
                         "duration": 5,
                         "negative_prompt": "",
                         "enable_prompt_expansion": True
-                    },
-                    webhook=webhook_url,
-                    webhook_events_filter=["completed"]
+                    }
+                }
+
+                # Only add webhook args if webhook_url is present
+                if webhook_url:
+                    prediction_args["webhook"] = webhook_url
+                    prediction_args["webhook_events_filter"] = ["completed"]
+                
+                # Run blocking call in thread
+                prediction = await asyncio.to_thread(
+                    replicate.predictions.create,
+                    **prediction_args
                 )
 
                 # Store mapping for webhooks

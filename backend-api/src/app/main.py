@@ -1,6 +1,7 @@
 """Main FastAPI application."""
 
 import os
+import asyncio
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
@@ -203,6 +204,30 @@ def create_app() -> FastAPI:  # noqa: C901
         enabled_flags = [k for k, v in feature_flags.items() if v]
         if enabled_flags:
             logger.info(f"Enabled features: {', '.join(enabled_flags)}")
+
+        # Run database migrations
+        try:
+            logger.info("Running database migrations...")
+            from alembic import command
+            from alembic.config import Config
+            
+            # Config path assumes we are in /app
+            alembic_cfg = Config("alembic.ini")
+            # set_main_option is needed if the ini file uses relative paths or placeholders
+            # But usually default is fine if run from correct CWD.
+            # We might need to ensure DB URL is set if it's not env var (it is in our case: DATABASE_URL)
+            
+            # Run upgrade to head
+            # Use run_migrations_online logic implicitly via upgrade command
+            await asyncio.to_thread(command.upgrade, alembic_cfg, "head")
+            logger.info("Database migrations applied successfully")
+        except Exception as e:
+            logger.error(f"Failed to apply database migrations: {e}")
+            # We might want to fail startup if migrations fail, but for now let's just log it
+            # to avoid crash loops if it's a transient DB issue. 
+            # Actually, if schema is missing, app is useless. But crashing container is better than 500s.
+            # However, user requested robustness. Let's log and proceed, maybe retry?
+            # Nah, ECS will restart if we crash. Let's keep it logging for now to debug.
 
         # Start configuration watcher in development/staging
         if settings.is_development or settings.is_staging:

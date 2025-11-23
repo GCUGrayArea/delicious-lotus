@@ -82,6 +82,8 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 
 # Copy application code
 COPY --chown=appuser:appuser backend-api/src/ /app/src/
+COPY --chown=appuser:appuser backend-api/alembic.ini /app/alembic.ini
+COPY --chown=appuser:appuser backend-api/migrations/ /app/migrations/
 
 # Copy frontend build artifacts
 RUN mkdir -p /app/src/frontend/dist && \

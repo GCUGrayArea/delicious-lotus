@@ -47,7 +47,11 @@ class LoggingMiddleware(BaseHTTPMiddleware):
         Returns:
             bool: True if request should be logged
         """
-        # Always log excluded paths (health checks, etc.)
+        # Never log health checks to reduce noise
+        if path.startswith("/health") or path.startswith("/api/v1/health"):
+            return False
+
+        # Always log excluded paths (critical paths that bypass sampling)
         if path in self.settings.log_sampling_exclude_paths:
             return True
 

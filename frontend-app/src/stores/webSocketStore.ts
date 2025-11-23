@@ -154,11 +154,28 @@ export const createWebSocketStore = () => {
           // Map backend status values to frontend values
           const backendStatus = message.status as string
           let status: 'queued' | 'running' | 'succeeded' | 'failed' | 'canceled' = 'queued'
-          if (backendStatus === 'in_progress') status = 'running'
-          else if (backendStatus === 'completed') status = 'succeeded'
-          else if (backendStatus === 'queued') status = 'queued'
-          else if (backendStatus === 'failed') status = 'failed'
-          else if (backendStatus === 'canceled' || backendStatus === 'cancelled') status = 'canceled'
+          
+          // Normalize backend status to frontend status
+          if (backendStatus === 'in_progress' || backendStatus === 'running' || backendStatus === 'processing') {
+            status = 'running'
+          } else if (backendStatus === 'completed' || backendStatus === 'succeeded' || backendStatus === 'success') {
+            status = 'succeeded'
+          } else if (backendStatus === 'queued' || backendStatus === 'starting' || backendStatus === 'pending') {
+            status = 'queued'
+          } else if (backendStatus === 'failed' || backendStatus === 'error') {
+            status = 'failed'
+          } else if (backendStatus === 'canceled' || backendStatus === 'cancelled') {
+            status = 'canceled'
+          }
+
+          // Log comprehensive debug info
+          console.log('[WebSocket] Processing Job Update:', {
+            messageId: jobId,
+            backendStatus,
+            mappedStatus: status,
+            rawMessage: message,
+            timestamp: new Date().toISOString()
+          })
 
           const progress = message.progress
           const msg = message.message

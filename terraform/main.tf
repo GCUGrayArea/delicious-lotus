@@ -184,6 +184,8 @@ module "ecs" {
     S3_BUCKET           = module.s3.bucket_name
     AWS_REGION          = var.aws_region
     CORS_ORIGINS        = "${var.cors_origins},https://${module.cloudfront.cloudfront_domain_name}"
+    ALLOWED_ORIGINS     = "${var.cors_origins},https://${module.cloudfront.cloudfront_domain_name}"
+    REPLICATE_WEBHOOK_URL = "https://${module.cloudfront.cloudfront_domain_name}/api/v1/replicate/webhook"
     REPLICATE_API_TOKEN = var.replicate_api_token
     OPENAI_API_KEY      = var.openai_api_key
   }

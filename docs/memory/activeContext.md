@@ -59,7 +59,12 @@
    - **Context:** Internal HTTP calls to `localhost` were failing in deployed environments, causing 500 errors.
    - **Rationale:** Simplifies architecture, removes network dependency for internal logic, and robustifies deployment.
 
-3. **Real-time Clip Broadcasting** (2025-11-22)
+3. **Replicate Webhook Handling** (2025-11-22)
+   - **Decision:** Conditionally pass `webhook_events_filter` to Replicate API only if `webhook` URL is provided.
+   - **Context:** Replicate API strictly validates that `webhook_events_filter` can only be used when `webhook` is present. Passing it with `webhook=None` caused 500/422 errors.
+   - **Rationale:** Ensures compatibility with the strict validation of the Replicate API client, preventing runtime crashes when webhooks are optional or unconfigured.
+
+4. **Real-time Clip Broadcasting** (2025-11-22)
    - **Decision:** Broadcast `clip_completed` events to `generation:{id}` WebSocket channel in addition to job-specific channels.
    - **Context:** Frontend Info Board listens to generation-level updates, but backend was only sending low-level job updates.
    - **Rationale:** Enables granular, real-time UI updates as each video clip finishes, without full page refresh.
