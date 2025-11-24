@@ -5,6 +5,7 @@ import {
   FolderOpen,
   Film,
   Image,
+  Megaphone,
 } from 'lucide-react';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { useAIGenerationStore, useMediaStore } from '../contexts/StoreContext';
@@ -207,6 +208,21 @@ export default function RootLayout() {
               <div className="flex items-center gap-2">
                 <Image className="w-4 h-4" />
                 <span>Media Library</span>
+              </div>
+            </NavLink>
+
+            <NavLink
+              to={ROUTES.AD_GENERATOR}
+              className={({ isActive }) =>
+                `px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isActive
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+                }`
+              }
+            >
+              <div className="flex items-center gap-2">
+                <Megaphone className="w-4 h-4" />
+                <span>Ad Generator</span>
               </div>
             </NavLink>
           </nav>

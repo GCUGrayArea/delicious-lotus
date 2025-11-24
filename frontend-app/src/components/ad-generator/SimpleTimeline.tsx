@@ -4,6 +4,7 @@ import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { X, Play, Film, ArrowRight } from 'lucide-react';
 import type { MediaAsset } from '@/types/stores';
 import { cn } from '@/lib/utils';
+import { stripQueryParams } from '@/lib/urlUtils';
 import {
     DndContext,
     closestCenter,
@@ -96,7 +97,7 @@ function SortableClip({ item, onRemove, onPlay, isPlaying }: { item: TimelineIte
             {/* Content */}
             {isPlaying && item.asset.type === 'video' ? (
                 <video
-                    src={item.asset.url}
+                    src={stripQueryParams(item.asset.url)}
                     className="w-full h-full object-cover pointer-events-none"
                     autoPlay
                     muted
@@ -104,7 +105,7 @@ function SortableClip({ item, onRemove, onPlay, isPlaying }: { item: TimelineIte
                 />
             ) : (
                 <img
-                    src={item.asset.thumbnailUrl || item.asset.url}
+                    src={stripQueryParams(item.asset.thumbnailUrl || item.asset.url)}
                     alt="Clip thumbnail"
                     className="w-full h-full object-cover pointer-events-none"
                 />
@@ -279,7 +280,7 @@ export const SimpleTimeline: React.FC<SimpleTimelineProps> = ({
                                     }}
                                 >
                                      <img
-                                        src={activeItem.asset.thumbnailUrl || activeItem.asset.url}
+                                        src={stripQueryParams(activeItem.asset.thumbnailUrl || activeItem.asset.url)}
                                         alt="Dragging"
                                         className="w-full h-full object-cover"
                                     />

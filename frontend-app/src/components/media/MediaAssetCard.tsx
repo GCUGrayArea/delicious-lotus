@@ -3,6 +3,7 @@ import { Image, Video, Music, Trash2, Download, CheckSquare, Square, Copy, Check
 import { Card } from '../ui/card';
 import type { MediaAsset } from '../../types/stores';
 import { formatRelativeTime } from '../../lib/relativeTime';
+import { stripQueryParams } from '../../lib/urlUtils';
 
 interface MediaAssetCardProps {
   asset: MediaAsset;
@@ -125,7 +126,7 @@ export const MediaAssetCard = memo(
           {/* For images, use main URL if thumbnail not available. For videos, only show thumbnail. */}
           {asset.thumbnailUrl || (asset.type === 'image' && asset.url) ? (
             <img
-              src={asset.thumbnailUrl || asset.url}
+              src={stripQueryParams(asset.thumbnailUrl || asset.url)}
               alt={asset.name}
               className="w-full h-full object-cover"
               loading="lazy"
@@ -153,7 +154,7 @@ export const MediaAssetCard = memo(
               {isCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
             </button>
             <a
-              href={asset.url}
+              href={stripQueryParams(asset.url)}
               download={asset.name}
               onClick={(e) => e.stopPropagation()}
               className="p-2 bg-blue-500/80 hover:bg-blue-500 rounded-lg text-white transition-colors"

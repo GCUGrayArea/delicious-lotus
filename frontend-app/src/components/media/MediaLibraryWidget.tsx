@@ -3,6 +3,7 @@ import { Search, Upload, Image, Video } from 'lucide-react';
 import { useMediaStore } from '../../contexts/StoreContext';
 import { MediaLibraryUpload } from './MediaLibraryUpload';
 import type { MediaAsset, MediaAssetType } from '../../types/stores';
+import { stripQueryParams } from '../../lib/urlUtils';
 
 interface MediaLibraryWidgetProps {
   onAssetDragStart?: (asset: MediaAsset) => void;
@@ -165,7 +166,7 @@ export function MediaLibraryWidget({ onAssetDragStart }: MediaLibraryWidgetProps
                     {/* For images, use main URL if thumbnail not available. For videos, only show thumbnail. */}
                     {asset.thumbnailUrl || (asset.type === 'image' && asset.url) ? (
                       <img
-                        src={asset.thumbnailUrl || asset.url}
+                        src={stripQueryParams(asset.thumbnailUrl || asset.url)}
                         alt={asset.name}
                         className="w-full h-full object-cover"
                         loading="lazy"
