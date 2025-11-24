@@ -1,5 +1,6 @@
 import { memo } from 'react';
-import { Trash2, Play, Hash, Tag } from 'lucide-react';
+import { Trash2, Play, Hash, Tag, Sparkles, Film } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
 import type { ProjectMetadata } from '../types/stores';
@@ -11,6 +12,8 @@ interface ProjectCardProps {
 }
 
 const ProjectCard = memo(({ project, onOpen, onDelete }: ProjectCardProps) => {
+  const navigate = useNavigate();
+
   const formatDate = (date: Date) => {
     if (!(date instanceof Date) || isNaN(date.getTime())) {
       return 'Unknown date';
@@ -64,6 +67,16 @@ const ProjectCard = memo(({ project, onOpen, onDelete }: ProjectCardProps) => {
     onOpen(project.id);
   };
 
+  const handleAdModeClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigate(`/ad-generator/create/ad-creative?projectId=${project.id}`);
+  };
+
+  const handleAdvancedEditClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigate(`/projects/${project.id}/editor`);
+  };
+
   return (
     <Card
       className="group cursor-pointer overflow-hidden border-zinc-800 bg-zinc-900 transition-all hover:border-zinc-700 hover:shadow-lg hover:shadow-blue-500/10"
@@ -93,22 +106,53 @@ const ProjectCard = memo(({ project, onOpen, onDelete }: ProjectCardProps) => {
 
         {/* Overlay on hover */}
         <div className="absolute inset-0 bg-black/60 opacity-0 transition-opacity group-hover:opacity-100 flex items-center justify-center gap-2">
-          <Button
-            size="sm"
-            onClick={handleOpenClick}
-            className="gap-1"
-          >
-            <Play className="h-4 w-4" />
-            Open
-          </Button>
-          <Button
-            size="sm"
-            variant="destructive"
-            onClick={handleDelete}
-            className="gap-1"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
+          {project.type === 'ad-creative' ? (
+            <>
+              <Button
+                size="sm"
+                onClick={handleAdModeClick}
+                className="gap-1 bg-purple-600 hover:bg-purple-700"
+              >
+                <Sparkles className="h-4 w-4" />
+                Ad Mode
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleAdvancedEditClick}
+                className="gap-1"
+              >
+                <Film className="h-4 w-4" />
+                Timeline
+              </Button>
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={handleDelete}
+                className="gap-1"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button
+                size="sm"
+                onClick={handleOpenClick}
+                className="gap-1"
+              >
+                <Play className="h-4 w-4" />
+                Open
+              </Button>
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={handleDelete}
+                className="gap-1"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
@@ -137,6 +181,30 @@ const ProjectCard = memo(({ project, onOpen, onDelete }: ProjectCardProps) => {
           <p className="mb-3 line-clamp-2 text-sm text-zinc-400">
             {project.description}
           </p>
+        )}
+
+        {/* Action buttons for Ad Creative projects */}
+        {project.type === 'ad-creative' && (
+          <div className="flex gap-2 mb-3">
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={handleAdModeClick}
+              className="flex-1 gap-1 h-8 text-xs bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border-purple-500/30"
+            >
+              <Sparkles className="h-3 w-3" />
+              Ad Mode
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={handleAdvancedEditClick}
+              className="flex-1 gap-1 h-8 text-xs"
+            >
+              <Film className="h-3 w-3" />
+              Timeline Editor
+            </Button>
+          </div>
         )}
 
         <div className="flex items-center justify-between text-xs text-zinc-500">
