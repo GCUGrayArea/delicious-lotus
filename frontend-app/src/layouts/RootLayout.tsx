@@ -175,7 +175,7 @@ export default function RootLayout() {
             className="flex items-center gap-2 text-primary hover:text-primary/80 transition-colors"
           >
             <Film className="w-6 h-6" />
-            <span className="text-lg font-semibold">Video Editor</span>
+            <span className="text-lg font-semibold">Delicious Lotus</span>
           </NavLink>
 
           {/* Navigation links */}
