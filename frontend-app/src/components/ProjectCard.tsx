@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { Trash2, Play } from 'lucide-react';
+import { Trash2, Play, Hash, Tag } from 'lucide-react';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
 import type { ProjectMetadata } from '../types/stores';
@@ -22,6 +22,28 @@ const ProjectCard = memo(({ project, onOpen, onDelete }: ProjectCardProps) => {
       hour: 'numeric',
       minute: '2-digit',
     }).format(date);
+  };
+
+  const formatProjectType = (type: string) => {
+    // Format the project type for display
+    return type
+      .split('-')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
+
+  const getProjectTypeBadgeColor = (type: string) => {
+    switch (type) {
+      case 'ad-creative':
+        return 'bg-purple-500/20 text-purple-400 border-purple-500/30';
+      case 'music-video':
+        return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
+      case 'educational-video':
+        return 'bg-green-500/20 text-green-400 border-green-500/30';
+      case 'custom':
+      default:
+        return 'bg-zinc-500/20 text-zinc-400 border-zinc-500/30';
+    }
   };
 
   const handleCardClick = (e: React.MouseEvent) => {
@@ -61,6 +83,14 @@ const ProjectCard = memo(({ project, onOpen, onDelete }: ProjectCardProps) => {
           </div>
         )}
 
+        {/* Project type badge in top left corner */}
+        <div className="absolute top-2 left-2 z-10">
+          <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md border backdrop-blur-sm ${getProjectTypeBadgeColor(project.type)}`}>
+            <Tag className="w-3 h-3" />
+            {formatProjectType(project.type)}
+          </span>
+        </div>
+
         {/* Overlay on hover */}
         <div className="absolute inset-0 bg-black/60 opacity-0 transition-opacity group-hover:opacity-100 flex items-center justify-center gap-2">
           <Button
@@ -84,9 +114,24 @@ const ProjectCard = memo(({ project, onOpen, onDelete }: ProjectCardProps) => {
 
       {/* Content */}
       <div className="p-4">
-        <h3 className="mb-1 truncate text-lg font-semibold text-zinc-100">
+        <h3 className="mb-2 truncate text-lg font-semibold text-zinc-100">
           {project.name}
         </h3>
+
+        {/* Project Type and ID Badges */}
+        <div className="flex flex-wrap gap-2 mb-3">
+          <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md border ${getProjectTypeBadgeColor(project.type)}`}>
+            <Tag className="w-3 h-3" />
+            {formatProjectType(project.type)}
+          </span>
+          <span
+            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-mono rounded-md border bg-zinc-800/50 text-zinc-500 border-zinc-700 cursor-default"
+            title={`Project ID: ${project.id}`}
+          >
+            <Hash className="w-3 h-3" />
+            {project.id.slice(0, 8)}
+          </span>
+        </div>
 
         {project.description && (
           <p className="mb-3 line-clamp-2 text-sm text-zinc-400">
