@@ -367,6 +367,8 @@ export const createProjectStore = () => {
               if (filters?.type) {
                 params.project_type = filters.type
               }
+              // Add user_id parameter (TODO: Get from auth store when available)
+              params.user_id = '00000000-0000-0000-0000-000000000001'
 
               const response = await api.get<{
                 items: Array<{
@@ -381,6 +383,8 @@ export const createProjectStore = () => {
               }>('/projects/', { params })
 
               set((state) => {
+                // Clear existing and set fresh data from backend
+                state.projects.clear()
                 response.items.forEach((item) => {
                   state.projects.set(item.id, {
                     id: item.id,
@@ -395,11 +399,14 @@ export const createProjectStore = () => {
                 })
                 state.isLoading = false
               })
+
+              console.log(`Fetched ${response.items.length} projects from backend`)
             } catch (error) {
               set((state) => {
                 state.isLoading = false
               })
               console.error('Failed to fetch projects:', error)
+              toast.error('Failed to load projects from server')
               // Don't throw here, just log, so UI can handle empty state gracefully
             }
           },
@@ -452,15 +459,28 @@ export const createProjectStore = () => {
             }
           },
 
-          removeProject: (projectId) =>
-            set((state) => {
-              state.projects.delete(projectId)
+          removeProject: async (projectId) => {
+            try {
+              // Call backend API: DELETE /api/v1/projects/{id}
+              await api.delete(`/projects/${projectId}`)
 
-              // Clear current project if it was deleted
-              if (state.currentProjectId === projectId) {
-                state.currentProjectId = undefined
-              }
-            }),
+              // Remove from local state after successful deletion
+              set((state) => {
+                state.projects.delete(projectId)
+
+                // Clear current project if it was deleted
+                if (state.currentProjectId === projectId) {
+                  state.currentProjectId = undefined
+                }
+              })
+
+              toast.success('Project deleted successfully')
+            } catch (error) {
+              console.error('Failed to delete project:', error)
+              toast.error('Failed to delete project')
+              throw error
+            }
+          },
 
           updateProject: (projectId, updates) =>
             set((state) => {

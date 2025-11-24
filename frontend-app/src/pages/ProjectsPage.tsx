@@ -21,19 +21,35 @@ export default function ProjectsPage() {
 
   // Get projects and actions from store
   const fetchProjects = useProjectStore((state) => state.fetchProjects);
-  const getProjects = useProjectStore((state) => state.getProjects);
+  const projectsMap = useProjectStore((state) => state.projects);
   const addProject = useProjectStore((state) => state.addProject);
   const removeProject = useProjectStore((state) => state.removeProject);
   const getCurrentProject = useProjectStore((state) => state.getCurrentProject);
   const currentProjectId = useProjectStore((state) => state.currentProjectId);
-  const projects = useMemo(() => getProjects(), [getProjects]);
+
+  // Convert Map to sorted array - re-runs when projectsMap changes
+  const projects = useMemo(() =>
+    Array.from(projectsMap.values()).sort(
+      (a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()
+    ),
+    [projectsMap]
+  );
 
   // Fetch projects on mount
   useEffect(() => {
-    fetchProjects().catch((error) => {
-      console.error('Failed to fetch projects:', error);
-    });
-  }, [fetchProjects]);
+    const loadProjects = async () => {
+      setIsLoading(true);
+      try {
+        await fetchProjects();
+      } catch (error) {
+        console.error('Failed to fetch projects:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadProjects();
+  }, []); // Empty dependency array to only run on mount
 
   // Filter projects based on search term
   const filteredProjects = useMemo(() => {
@@ -64,7 +80,7 @@ export default function ProjectsPage() {
   }, [projects]);
 
   // Confirmed delete handler
-  const handleConfirmDelete = useCallback(() => {
+  const handleConfirmDelete = useCallback(async () => {
     if (!projectToDelete) return;
 
     try {
@@ -75,13 +91,15 @@ export default function ProjectsPage() {
         return;
       }
 
-      // Remove project from store
-      removeProject(projectToDelete.id);
+      // Remove project from store (now async with backend call)
+      await removeProject(projectToDelete.id);
       console.log('Project deleted successfully:', projectToDelete.name);
-      // TODO: Show success toast
+
+      // Close the dialog after successful deletion
+      setDeleteConfirmOpen(false);
     } catch (error) {
       console.error('Failed to delete project:', error);
-      // TODO: Show error toast
+      // Error toast is now handled in the store
     } finally {
       setProjectToDelete(null);
     }

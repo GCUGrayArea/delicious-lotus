@@ -244,7 +244,7 @@ export interface ProjectActions {
   // Project collection operations
   fetchProjects: (filters?: { type?: ProjectType }) => Promise<void>
   addProject: (metadata: Omit<ProjectMetadata, 'id' | 'createdAt' | 'updatedAt' | 'version'>, settings?: Partial<ProjectSettings>) => Promise<string>
-  removeProject: (projectId: string) => void
+  removeProject: (projectId: string) => Promise<void>
   updateProject: (projectId: string, updates: Partial<ProjectMetadata>) => void
   getProjects: () => ProjectMetadata[]
   getCurrentProject: () => ProjectMetadata | undefined

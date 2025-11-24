@@ -1,6 +1,7 @@
-import { useParams } from 'react-router';
+import { useParams, useNavigate } from 'react-router';
 import { useEffect, useCallback, useState } from 'react';
-import { Play, Pause, SkipBack, SkipForward } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, Sparkles } from 'lucide-react';
+import { Button } from '../components/ui/button';
 import { useShallow } from 'zustand/react/shallow';
 import { PanelResizeHandle, Panel, PanelGroup } from 'react-resizable-panels';
 import { Timeline } from '../components/timeline';
@@ -21,6 +22,7 @@ import { toast } from '../lib/toast';
  */
 export default function ProjectEditorPage() {
   const { projectId } = useParams();
+  const navigate = useNavigate();
   const timelineStore = useTimelineStore();
   const mediaStore = useMediaStore();
   const editorStore = useEditorStore();
@@ -73,53 +75,6 @@ export default function ProjectEditorPage() {
       });
     }
 
-    // Add sample media assets for testing if none exist
-    if (mediaStore.assets.size === 0) {
-      const sampleAssets: MediaAsset[] = [
-        {
-          id: 'sample-video-1',
-          name: 'Sample Video.mp4',
-          type: 'video',
-          url: 'https://sample-videos.com/video123/mp4/720/big_buck_bunny_720p_1mb.mp4',
-          thumbnailUrl: 'https://via.placeholder.com/150/0000FF/FFFFFF?text=Video',
-          size: 1048576,
-          duration: 10,
-          width: 1280,
-          height: 720,
-          createdAt: new Date(),
-          metadata: {},
-          tags: [],
-        },
-        {
-          id: 'sample-image-1',
-          name: 'Sample Image.jpg',
-          type: 'image',
-          url: 'https://via.placeholder.com/1920x1080/FF0000/FFFFFF?text=Sample+Image',
-          thumbnailUrl: 'https://via.placeholder.com/150/FF0000/FFFFFF?text=Image',
-          size: 524288,
-          width: 1920,
-          height: 1080,
-          createdAt: new Date(),
-          metadata: {},
-          tags: [],
-        },
-        {
-          id: 'sample-image-2',
-          name: 'AI Generated.jpg',
-          type: 'image',
-          url: 'https://via.placeholder.com/1920x1080/00FF00/FFFFFF?text=AI+Generated',
-          thumbnailUrl: 'https://via.placeholder.com/150/00FF00/FFFFFF?text=AI',
-          size: 524288,
-          width: 1920,
-          height: 1080,
-          createdAt: new Date(),
-          metadata: { aiGenerated: true },
-          tags: [],
-        },
-      ];
-
-      sampleAssets.forEach(asset => mediaStore.addAsset(asset));
-    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -348,8 +303,33 @@ export default function ProjectEditorPage() {
     removeJob(jobId);
   }, [removeJob]);
 
+  // Navigate to Ad Mode
+  const handleAdMode = useCallback(() => {
+    navigate(`/ad-generator/create/ad-creative?projectId=${projectId}`);
+  }, [navigate, projectId]);
+
   return (
-    <div className="h-screen w-full bg-zinc-950 overflow-hidden">
+    <div className="h-screen w-full bg-zinc-950 overflow-hidden flex flex-col">
+      {/* Toolbar */}
+      <div className="flex-shrink-0 h-12 bg-zinc-900 border-b border-zinc-800 flex items-center justify-between px-4">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-zinc-400">Timeline Editor</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={handleAdMode}
+            className="gap-1.5 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border-purple-500/30"
+          >
+            <Sparkles className="h-4 w-4" />
+            Ad Mode
+          </Button>
+        </div>
+      </div>
+
+      {/* Main Editor Content */}
+      <div className="flex-1 overflow-hidden">
       <PanelGroup direction="vertical">
         {/* Top Section: Media Library | Preview | Details */}
         <Panel defaultSize={67} minSize={40}>
@@ -462,6 +442,7 @@ export default function ProjectEditorPage() {
           </div>
         </Panel>
       </PanelGroup>
+      </div>
 
       {/* Export Dialog */}
       <ExportDialog
